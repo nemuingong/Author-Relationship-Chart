@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>棒バトLOD 作者影響相関図</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: "Helvetica Neue", Arial, sans-serif; overflow: hidden; background-color: #f8f9fa; }
+        #network-container { width: 100vw; height: 100vh; }
+        
+        /* コントロールパネル */
+        .controls {
+            position: absolute; top: 15px; left: 15px;
+            background: rgba(255, 255, 255, 0.95); padding: 20px;
+            border-radius: 12px; z-index: 100;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); max-width: 350px; border: 1px solid #ddd;
+        }
+        h3 { margin: 0 0 15px 0; font-size: 18px; color: #333; }
+        
+        /* 検索システム */
+        .search-container { display: flex; gap: 8px; margin-bottom: 15px; }
+        .search-input { 
+            flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; 
+            font-size: 14px; outline: none; 
+        }
+        .search-input:focus { border-color: #0056b3; }
+        .search-btn { 
+            padding: 10px 15px; background: #0056b3; color: white; border: none; 
+            border-radius: 6px; cursor: pointer; font-weight: bold; 
+        }
+        .search-btn:hover { background: #004494; }
+
+        /* 凡例 */
+        .legend-item { display: flex; align-items: center; margin-bottom: 6px; font-size: 13px; color: #495057; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; margin-right: 10px; border: 1px solid rgba(0,0,0,0.15); }
+        
+        #status { font-weight: bold; font-size: 14px; color: #0d6efd; margin-top: 10px; }
+        .error { color: #dc3545; }
+
+        /* モーダル全般 */
+        #modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.5); z-index: 150; backdrop-filter: blur(2px);
+        }
+        .close-btn-top { position: absolute; top: 15px; right: 20px; font-size: 30px; background: none; border: none; cursor: pointer; color: #666; }
+        .close-btn-top:hover { color: #333; }
+
+        /* 作者詳細モーダル */
+        #author-detail-modal {
+            display: none; position: fixed; top: 5%; left: 50%; transform: translateX(-50%);
+            width: 95%; max-width: 700px; background: #f8f9fa; z-index: 200;
+            border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-height: 90vh; overflow-y: auto; color: #202122;
+        }
+        .wb-header { background: #fff; padding: 20px; border-bottom: 1px solid #c8ccd1; margin-bottom: 20px; border-radius: 8px 8px 0 0; }
+        .wb-title { font-size: 1.8rem; border-bottom: 1px solid #a2a9b1; padding-bottom: 5px; margin-bottom: 5px; font-weight: bold; }
+        .wb-statement-group { background: #fff; border: 1px solid #c8ccd1; margin-bottom: -1px; display: flex; }
+        .wb-label-col { background-color: #eaecf0; padding: 12px 15px; font-weight: bold; color: #0056b3; border-right: 1px solid #c8ccd1; width: 30%; min-width: 120px; }
+        .wb-value-col { padding: 12px 15px; width: 70%; font-size: 1rem; line-height: 1.6; }
+        .tag-link { text-decoration: none; color: #0056b3; cursor: pointer; font-weight: bold; }
+        .tag-link:hover { text-decoration: underline; color: #004494; }
+        .text-muted { color: #6c757d; font-size: 0.9em; }
+        .loading-spinner { text-align: center; padding: 40px; color: #0056b3; font-weight: bold; }
+        .work-separator { color: #dee2e6; margin: 0 8px; font-weight: normal; }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <h3>🔗 作者作風 影響相関図</h3>
+    
+    <!-- 検索システム -->
+    <div class="search-container">
+        <input type="text" id="search-input" class="search-input" list="author-list" placeholder="作者名を入力..." onkeydown="if(event.key==='Enter') searchAuthor()">
+        <datalist id="author-list"></datalist>
+        <button class="search-btn" onclick="searchAuthor()">検索</button>
+    </div>
+
+    <div id="legend-area">
+        <div style="font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #333;">【 影響を与えた人数 】</div>
+        <div class="legend-item"><span class="dot" style="background:#e9ecef"></span>0人</div>
+        <div class="legend-item"><span class="dot" style="background:#e3f2fd"></span>1人</div>
+        <div class="legend-item"><span class="dot" style="background:#90caf9"></span>2人</div>
+        <div class="legend-item"><span class="dot" style="background:#ffcc80"></span>3人</div>
+        <div class="legend-item"><span class="dot" style="background:#ffb74d"></span>4人</div>
+        <div class="legend-item"><span class="dot" style="background:#ff8a65"></span>5人</div>
+        <div class="legend-item"><span class="dot" style="background:#e57373"></span>6人以上</div>
+    </div>
+    
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+    <div style="font-size: 12px; color: #495057; line-height: 1.5; margin-bottom: 10px;">
+        <strong>[ 影響を受けた作者 ] → [ 影響元 ]</strong><br>
+        矢印は「誰を参考にしているか」を示します。
+    </div>
+    <small style="color:#666; font-size: 12px; line-height: 1.5;">
+        • <span style="color:#0056b3; font-weight:bold;">クリック / 検索: 繋がりをハイライト</span><br>
+        • <span style="color:#d32f2f; font-weight:bold;">ダブルクリック: 作者詳細・作品リンクを表示</span>
+    </small>
+
+    <div id="status">準備完了</div>
+</div>
+
+<div id="network-container"></div>
+
+<div id="modal-overlay" onclick="closeModal()"></div>
+
+<!-- 作者詳細モーダル -->
+<div id="author-detail-modal">
+    <button class="close-btn-top" onclick="closeModal()">&times;</button>
+    
+    <div id="detail-loading" class="loading-spinner">
+        ⏳ 作者情報と作品データを取得中...
+    </div>
+
+    <div id="detail-content" style="display: none; padding-bottom: 30px;">
+        <div class="wb-header">
+            <h1 class="wb-title" id="detail-name"></h1>
+        </div>
+
+        <div style="padding: 0 20px;">
+            <h2 style="font-size: 1.2rem; border-bottom: 2px solid #ddd; padding-bottom: 5px; margin-bottom: 15px;">基本情報</h2>
+            <div class="wb-statement-group">
+                <div class="wb-label-col">別名 (Aliases)</div>
+                <div class="wb-value-col" id="detail-aliases"></div>
+            </div>
+            <div class="wb-statement-group">
+                <div class="wb-label-col">活動サイト</div>
+                <div class="wb-value-col" id="detail-sites"></div>
+            </div>
+
+            <h4 style="margin-top: 30px; border-bottom: 2px solid #ddd; padding-bottom: 5px; font-size: 1.1rem;">作品リスト</h4>
+            <div class="wb-statement-group">
+                <div class="wb-label-col">個人作</div>
+                <div class="wb-value-col" id="detail-solo"></div>
+            </div>
+            <div class="wb-statement-group">
+                <div class="wb-label-col">主催した合作</div>
+                <div class="wb-value-col" id="detail-host"></div>
+            </div>
+            <div class="wb-statement-group">
+                <div class="wb-label-col">参加した合作</div>
+                <div class="wb-value-col" id="detail-part"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    const ENDPOINT_URL = "https://aiueo9999.pythonanywhere.com/sparql";
+    let network = null;
+    let nodesSet = null;
+    let edgesSet = null;
+
+    window.onload = function() { loadData(); };
+
+    // 人数によるグラデーション色変更
+    function getColorByDegree(degree) {
+        if (degree === 0) return { background: "#e9ecef", border: "#ced4da" }; 
+        const palette = [
+            { background: "#e3f2fd", border: "#90caf9" }, 
+            { background: "#90caf9", border: "#42a5f5" }, 
+            { background: "#ffcc80", border: "#ffa726" }, 
+            { background: "#ffb74d", border: "#fb8c00" }, 
+            { background: "#ff8a65", border: "#f4511e" }, 
+            { background: "#e57373", border: "#e53935" }  
+        ];
+        return palette[Math.min(degree - 1, palette.length - 1)];
+    }
+
+    async function loadData() {
+        const status = document.getElementById('status');
+        status.innerHTML = "📡 データを取得中...";
+
+        // 参照関係の取得（別名統合処理込み）
+        const queryRefs = `
+            PREFIX ex: <http://example.org/bat/>
+            SELECT DISTINCT ?source ?target WHERE {
+                ?author_uri ex:reference ?raw_target .
+                BIND(REPLACE(STR(?author_uri), "^.*Author_", "") AS ?source)
+                OPTIONAL { 
+                    ?target_uri ex:alias ?raw_target .
+                    BIND(REPLACE(STR(?target_uri), "^.*Author_", "") AS ?main_target)
+                }
+                BIND(COALESCE(?main_target, ?raw_target) AS ?target)
+            }
+        `;
+
+        try {
+            const resRefs = await fetch(ENDPOINT_URL + "?query=" + encodeURIComponent(queryRefs), { headers: { 'Accept': 'application/json' } });
+            if (!resRefs.ok) throw new Error("データの取得に失敗");
+            const jsonRefs = await resRefs.json();
+            
+            const rawData = jsonRefs.results.bindings.map(b => {
+                let sName = b.source.value;
+                let tName = b.target.value;
+                try { sName = decodeURIComponent(sName); } catch(e) {}
+                try { tName = decodeURIComponent(tName); } catch(e) {}
+                return [sName.replace(/_/g, ' '), tName.replace(/_/g, ' ')];
+            });
+
+            const nodeNames = new Set();
+            rawData.forEach(d => { nodeNames.add(d[0]); nodeNames.add(d[1]); });
+
+            // 影響を与えた人数（入次数）のカウント
+            const inDegree = {};
+            nodeNames.forEach(n => inDegree[n] = 0);
+            rawData.forEach(d => { inDegree[d[1]] += 1; });
+
+            const nodesData = Array.from(nodeNames).map(name => {
+                const degree = inDegree[name];
+                const colorSettings = getColorByDegree(degree);
+                return { 
+                    id: name, label: name, 
+                    color: { background: colorSettings.background, border: colorSettings.border },
+                    font: { color: "#212121" }, value: 20,
+                    title: `影響を与えた人数: ${degree}人`
+                };
+            });
+
+            const edgesData = [];
+            const exists = new Set();
+            rawData.forEach(d => {
+                const edgeId = d[0] + "->" + d[1];
+                if (!exists.has(edgeId)) {
+                    edgesData.push({ id: edgeId, from: d[0], to: d[1], arrows: 'to', color: { color: '#adb5bd', opacity: 0.7 } });
+                    exists.add(edgeId);
+                }
+            });
+
+            // 検索ボックスのサジェスト（datalist）を作成
+            const datalist = document.getElementById('author-list');
+            Array.from(nodeNames).sort().forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                datalist.appendChild(option);
+            });
+
+            status.innerHTML = `✅ 描画完了`;
+            drawGraph(nodesData, edgesData);
+
+        } catch (e) {
+            status.innerHTML = `<span class="error">エラー発生: ${e.message}</span>`;
+        }
+    }
+
+    function drawGraph(nodesData, edgesData) {
+        const container = document.getElementById('network-container');
+        nodesSet = new vis.DataSet(nodesData);
+        edgesSet = new vis.DataSet(edgesData);
+        
+        const options = {
+            nodes: { 
+                shape: 'dot', font: { size: 14, strokeWidth: 0, face: 'Arial, sans-serif' }, 
+                scaling: { min: 20, max: 20 }, borderWidth: 2, 
+                shadow: { enabled: true, color: 'rgba(0,0,0,0.1)', size: 5, x: 2, y: 2 } 
+            },
+            edges: { width: 1.5, smooth: { type: 'dynamic' }, hoverWidth: 1.5 },
+            physics: { forceAtlas2Based: { gravitationalConstant: -60, springLength: 150, springConstant: 0.08 }, solver: 'forceAtlas2Based', stabilization: { iterations: 150 } },
+            interaction: { hover: true, tooltipDelay: 100 }
+        };
+
+        network = new vis.Network(container, { nodes: nodesSet, edges: edgesSet }, options);
+
+        // クリックでハイライト処理
+        network.on("selectNode", function (params) {
+            highlightConnections(params.nodes[0]);
+        });
+
+        // 選択解除でハイライトリセット
+        network.on("deselectNode", resetHighlight);
+
+        // ダブルクリックで詳細表示
+        network.on("doubleClick", function (params) {
+            if (params.nodes.length > 0) {
+                openAuthorDetailModal(params.nodes[0]);
+            }
+        });
+    }
+
+    // =========================================================
+    // ハイライト・検索機能
+    // =========================================================
+    function highlightConnections(nodeId) {
+        const connectedNodes = network.getConnectedNodes(nodeId);
+        const connectedEdges = network.getConnectedEdges(nodeId);
+
+        let updateNodes = [];
+        nodesSet.forEach(node => { 
+            updateNodes.push({ id: node.id, opacity: (node.id === nodeId || connectedNodes.includes(node.id)) ? 1 : 0.15 }); 
+        });
+        nodesSet.update(updateNodes);
+
+        let updateEdges = [];
+        edgesSet.forEach(edge => {
+            const isConnected = connectedEdges.includes(edge.id);
+            updateEdges.push({ id: edge.id, width: isConnected ? 2.5 : 1.5, color: { color: isConnected ? '#0056b3' : '#adb5bd', opacity: isConnected ? 1 : 0.1 } });
+        });
+        edgesSet.update(updateEdges);
+    }
+
+    function resetHighlight() {
+        if(!network) return;
+        let updateNodes = []; nodesSet.forEach(node => { updateNodes.push({ id: node.id, opacity: 1 }); }); nodesSet.update(updateNodes);
+        let updateEdges = []; edgesSet.forEach(edge => { updateEdges.push({ id: edge.id, width: 1.5, color: { color: '#adb5bd', opacity: 0.7 } }); }); edgesSet.update(updateEdges);
+    }
+
+    function searchAuthor() {
+        const input = document.getElementById('search-input').value.trim();
+        if (!input) return;
+
+        if (nodesSet.get(input)) {
+            // ノードを選択状態にし、カメラをズーム、ハイライトを実行
+            network.selectNodes([input]);
+            network.focus(input, { scale: 1.2, animation: { duration: 500, easingFunction: "easeInOutQuad" } });
+            highlightConnections(input);
+        } else {
+            alert(`「${input}」はグラフ内に見つかりませんでした。`);
+        }
+    }
+
+    // =========================================================
+    // 作者詳細機能 (ダブルクリック時)
+    // =========================================================
+    async function openAuthorDetailModal(authorName) {
+        document.getElementById('author-detail-modal').style.display = 'block';
+        document.getElementById('modal-overlay').style.display = 'block';
+        document.getElementById('detail-loading').style.display = 'block';
+        document.getElementById('detail-content').style.display = 'none';
+
+        const profileQuery = `
+            PREFIX ex: <http://example.org/bat/>
+            PREFIX schema1: <http://schema.org/>
+            SELECT ?p ?o WHERE {
+                BIND(IRI(CONCAT("http://example.org/bat/Author_", ENCODE_FOR_URI("${authorName}"))) AS ?uri)
+                ?uri ?p ?o .
+                FILTER(?p IN (ex:alias, schema1:url))
+            }
+        `;
+
+        const worksQuery = `
+            PREFIX ex: <http://example.org/bat/>
+            PREFIX schema1: <http://schema.org/>
+            SELECT DISTINCT ?workName ?workType ?role ?workUrl WHERE {
+                BIND(IRI(CONCAT("http://example.org/bat/Author_", ENCODE_FOR_URI("${authorName}"))) AS ?authorUri)
+                { BIND("${authorName}" AS ?creditName) } UNION { ?authorUri ex:alias ?creditName . }
+
+                ?work a ex:StickAnimation ; schema1:name ?workName ; ex:workType ?workType .
+                OPTIONAL { ?work schema1:url ?workUrl . }
+                
+                { ?work ex:author ?creditName . BIND("author" AS ?role) }
+                UNION
+                { ?work ex:participant ?creditName . BIND("participant" AS ?role) }
+            }
+        `;
+
+        try {
+            const [resProfile, resWorks] = await Promise.all([
+                fetch(ENDPOINT_URL + "?query=" + encodeURIComponent(profileQuery), { headers: { 'Accept': 'application/json' } }),
+                fetch(ENDPOINT_URL + "?query=" + encodeURIComponent(worksQuery), { headers: { 'Accept': 'application/json' } })
+            ]);
+
+            const jsonProfile = await resProfile.json();
+            const jsonWorks = await resWorks.json();
+
+            const data = { aliases: [], sites: [], solo: [], collab_host: [], collab_part: [] };
+
+            jsonProfile.results.bindings.forEach(b => {
+                const prop = b.p.value;
+                let val = b.o.value;
+                try { val = decodeURIComponent(val).replace(/_/g, ' '); } catch(e) {}
+                if (prop.includes("alias")) data.aliases.push(val);
+                if (prop.includes("url")) data.sites.push(b.o.value);
+            });
+
+            const processWorks = (array, b) => {
+                const wName = b.workName.value;
+                const wUrl = b.workUrl ? b.workUrl.value : null;
+                let existing = array.find(w => w.name === wName);
+                if (!existing) array.push({ name: wName, url: wUrl });
+                else if (!existing.url && wUrl) existing.url = wUrl;
+            };
+
+            jsonWorks.results.bindings.forEach(b => {
+                const wType = b.workType.value;
+                const role = b.role.value;
+                if (wType === "個人作" && role === "author") processWorks(data.solo, b);
+                if ((wType === "合作" || wType === "企画") && role === "author") processWorks(data.collab_host, b);
+                if (wType === "合作" && role === "participant") processWorks(data.collab_part, b);
+            });
+
+            document.getElementById('detail-name').innerText = authorName;
+
+            const renderSimpleList = (id, array, isLink = false) => {
+                const el = document.getElementById(id);
+                if (array.length === 0) {
+                    el.innerHTML = '<span class="text-muted">（データなし）</span>';
+                } else if (isLink) {
+                    el.innerHTML = array.map(item => `<a href="${item}" target="_blank" class="tag-link">🔗 ${item}</a>`).join('<br>');
+                } else {
+                    el.innerHTML = array.join(', ');
+                }
+            };
+
+            const renderWorksList = (id, array) => {
+                const el = document.getElementById(id);
+                if (array.length === 0) {
+                    el.innerHTML = '<span class="text-muted">（データなし）</span>';
+                    return;
+                }
+                el.innerHTML = array.map(w => w.url ? `<a href="${w.url}" target="_blank" class="tag-link">${w.name}</a>` : `<span>${w.name}</span>`).join('<span class="work-separator">|</span>');
+            };
+
+            renderSimpleList('detail-aliases', data.aliases);
+            renderSimpleList('detail-sites', data.sites, true);
+            renderWorksList('detail-solo', data.solo);
+            renderWorksList('detail-host', data.collab_host);
+            renderWorksList('detail-part', data.collab_part);
+
+            document.getElementById('detail-loading').style.display = 'none';
+            document.getElementById('detail-content').style.display = 'block';
+
+        } catch (e) {
+            document.getElementById('detail-loading').innerHTML = `<span class="error">データ取得失敗<br>${e.message}</span>`;
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('author-detail-modal').style.display = 'none';
+        document.getElementById('modal-overlay').style.display = 'none';
+    }
+</script>
+</body>
+</html>
