@@ -8,7 +8,6 @@
         body { margin: 0; padding: 0; font-family: "Helvetica Neue", Arial, sans-serif; overflow: hidden; background-color: #f8f9fa; }
         #network-container { width: 100vw; height: 100vh; }
         
-        /* コントロールパネル */
         .controls {
             position: absolute; top: 15px; left: 15px;
             background: rgba(255, 255, 255, 0.95); padding: 20px;
@@ -17,21 +16,18 @@
         }
         h3 { margin: 0 0 15px 0; font-size: 18px; color: #333; }
         
-        /* 検索システム */
         .search-container { display: flex; gap: 8px; margin-bottom: 15px; }
         .search-input { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; outline: none; }
         .search-input:focus { border-color: #0056b3; }
         .search-btn { padding: 10px 15px; background: #0056b3; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .search-btn:hover { background: #004494; }
 
-        /* 凡例 */
         .legend-item { display: flex; align-items: center; margin-bottom: 6px; font-size: 13px; color: #495057; }
         .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; margin-right: 10px; border: 1px solid rgba(0,0,0,0.15); }
         
         #status { font-weight: bold; font-size: 14px; color: #0d6efd; margin-top: 10px; }
         .error { color: #dc3545; }
 
-        /* モーダル全般 */
         #modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.5); z-index: 150; backdrop-filter: blur(2px);
@@ -39,25 +35,27 @@
         .close-btn-top { position: absolute; top: 15px; right: 20px; font-size: 30px; background: none; border: none; cursor: pointer; color: #666; }
         .close-btn-top:hover { color: #333; }
 
-        /* 作者詳細モーダル */
+        /* 作者詳細モーダル（全項目対応版） */
         #author-detail-modal {
             display: none; position: fixed; top: 5%; left: 50%; transform: translateX(-50%);
-            width: 95%; max-width: 700px; background: #f8f9fa; z-index: 200;
+            width: 95%; max-width: 800px; background: #f8f9fa; z-index: 200;
             border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             max-height: 90vh; overflow-y: auto; color: #202122;
         }
         .wb-header { background: #fff; padding: 20px; border-bottom: 1px solid #c8ccd1; margin-bottom: 20px; border-radius: 8px 8px 0 0; }
         .wb-title { font-size: 1.8rem; border-bottom: 1px solid #a2a9b1; padding-bottom: 5px; margin-bottom: 5px; font-weight: bold; }
         .wb-statement-group { background: #fff; border: 1px solid #c8ccd1; margin-bottom: -1px; display: flex; }
-        .wb-label-col { background-color: #eaecf0; padding: 12px 15px; font-weight: bold; color: #0056b3; border-right: 1px solid #c8ccd1; width: 30%; min-width: 120px; }
-        .wb-value-col { padding: 12px 15px; width: 70%; font-size: 1rem; line-height: 1.6; }
+        .wb-label-col { background-color: #eaecf0; padding: 12px 15px; font-weight: bold; color: #0056b3; border-right: 1px solid #c8ccd1; width: 25%; min-width: 120px; }
+        .wb-value-col { padding: 12px 15px; width: 75%; font-size: 1rem; line-height: 1.6; }
+        
         .tag-link { text-decoration: none; color: #0056b3; cursor: pointer; font-weight: bold; }
         .tag-link:hover { text-decoration: underline; color: #004494; }
         .text-muted { color: #6c757d; font-size: 0.9em; }
         .loading-spinner { text-align: center; padding: 40px; color: #0056b3; font-weight: bold; }
+        .work-separator { color: #dee2e6; margin: 0 8px; font-weight: normal; }
         
-        /* 作品のカンマ区切り用 */
-        .work-separator { color: #202122; margin-right: 6px; }
+        /* バッジスタイル（作風用） */
+        .badge-style { display: inline-block; background: #0dcaf0; color: #000; padding: 3px 8px; border-radius: 4px; border: 1px solid #0aa2c0; font-size: 0.85em; margin: 2px; }
     </style>
 </head>
 <body>
@@ -83,6 +81,10 @@
     </div>
     
     <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+    <div style="font-size: 12px; color: #495057; line-height: 1.5; margin-bottom: 10px;">
+        <strong>[ 影響を受けた作者 ] → [ 影響元 ]</strong><br>
+        矢印は「誰を参考にしているか」を示します。
+    </div>
     <small style="color:#666; font-size: 12px; line-height: 1.5;">
         • <span style="color:#0056b3; font-weight:bold;">クリック / 検索: 繋がりをハイライト</span><br>
         • <span style="color:#d32f2f; font-weight:bold;">ダブルクリック: 作者詳細・作品リンクを表示</span>
@@ -94,26 +96,45 @@
 <div id="network-container"></div>
 <div id="modal-overlay" onclick="closeModal()"></div>
 
-<!-- 作者詳細モーダル -->
+<!-- 作者詳細モーダル (全項目復元版) -->
 <div id="author-detail-modal">
     <button class="close-btn-top" onclick="closeModal()">&times;</button>
-    <div id="detail-loading" class="loading-spinner">⏳ データを取得中...</div>
+    
+    <div id="detail-loading" class="loading-spinner">
+        ⏳ データを取得中...<br><small style="font-weight:normal;">(高速化処理中)</small>
+    </div>
+
     <div id="detail-content" style="display: none; padding-bottom: 30px;">
         <div class="wb-header">
             <h1 class="wb-title" id="detail-name"></h1>
         </div>
+
         <div style="padding: 0 20px;">
             <h2 style="font-size: 1.2rem; border-bottom: 2px solid #ddd; padding-bottom: 5px; margin-bottom: 15px;">基本情報</h2>
+            
             <div class="wb-statement-group">
                 <div class="wb-label-col">別名 (Aliases)</div>
                 <div class="wb-value-col" id="detail-aliases"></div>
             </div>
             <div class="wb-statement-group">
-                <div class="wb-label-col">活動サイト</div>
+                <div class="wb-label-col">作風・属性 (Style)</div>
+                <div class="wb-value-col" id="detail-styles"></div>
+            </div>
+            <div class="wb-statement-group">
+                <div class="wb-label-col">活動サイト (Website)</div>
                 <div class="wb-value-col" id="detail-sites"></div>
             </div>
+            <div class="wb-statement-group">
+                <div class="wb-label-col">参考元 (Reference)</div>
+                <div class="wb-value-col" id="detail-refs"></div>
+            </div>
+            <div class="wb-statement-group">
+                <div class="wb-label-col">備考 (Note)</div>
+                <div class="wb-value-col" id="detail-notes" style="white-space: pre-wrap;"></div>
+            </div>
 
-            <h4 style="margin-top: 30px; border-bottom: 2px solid #ddd; padding-bottom: 5px; font-size: 1.1rem;">作品リスト</h4>
+            <h4 style="margin-top: 30px; border-bottom: 2px solid #ddd; padding-bottom: 5px; font-size: 1.1rem;">作品リスト (自動集計)</h4>
+            
             <div class="wb-statement-group">
                 <div class="wb-label-col">個人作</div>
                 <div class="wb-value-col" id="detail-solo"></div>
@@ -138,14 +159,13 @@
 
     window.onload = function() { loadData(); };
 
-    // URLの優先度を判定する関数（数値が大きいほど優先）
     function getUrlPriority(url) {
         if (!url) return 0;
         const lowerUrl = url.toLowerCase();
-        if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) return 3; // Youtube
-        if (lowerUrl.includes('nicovideo.jp') || lowerUrl.includes('nico.ms')) return 2; // ニコニコ
-        if (lowerUrl.includes('x.com') || lowerUrl.includes('twitter.com')) return 1;    // X (Twitter)
-        return 0; // その他
+        if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) return 3;
+        if (lowerUrl.includes('nicovideo.jp') || lowerUrl.includes('nico.ms')) return 2;
+        if (lowerUrl.includes('x.com') || lowerUrl.includes('twitter.com')) return 1;
+        return 0;
     }
 
     function getColorByDegree(degree) {
@@ -279,7 +299,7 @@
     }
 
     // =========================================================
-    // 作者詳細データの取得とモーダル表示（最適化・優先度対応）
+    // 【高速化＆全項目取得版】 作者詳細モーダル処理
     // =========================================================
     async function openAuthorDetailModal(authorName) {
         document.getElementById('author-detail-modal').style.display = 'block';
@@ -287,22 +307,21 @@
         document.getElementById('detail-loading').style.display = 'block';
         document.getElementById('detail-content').style.display = 'none';
 
-        // 検索時の文字化けを防ぐため、スペースをアンダーバーに戻してエンコード
         const safeNameForUri = encodeURIComponent(authorName.replace(/ /g, '_'));
         const safeString = authorName.replace(/"/g, '\\"');
 
-        // URIからプロフィール（別名・活動URL）を取得
+        // 1. プロフィール情報（別名, 活動サイト, 作風, 参考元, 備考）をまとめて取得
         const profileQuery = `
             PREFIX ex: <http://example.org/bat/>
             PREFIX schema1: <http://schema.org/>
-            SELECT ?p ?o WHERE {
+            SELECT DISTINCT ?p ?o WHERE {
                 BIND(IRI(CONCAT("http://example.org/bat/Author_", "${safeNameForUri}")) AS ?uri)
                 ?uri ?p ?o .
-                FILTER(?p IN (ex:alias, schema1:url))
+                FILTER(?p IN (ex:alias, schema1:url, ex:style, ex:reference, ex:note))
             }
         `;
 
-        // 漏れをなくすため、ex:workType を OPTIONAL（任意）にして全て取得する
+        // 2. 作品情報（作者自身のURI、または登録されている別名に紐づく作品を漏れなく取得）
         const worksQuery = `
             PREFIX ex: <http://example.org/bat/>
             PREFIX schema1: <http://schema.org/>
@@ -321,6 +340,7 @@
         `;
 
         try {
+            // クエリの並行実行で高速化
             const [resProfile, resWorks] = await Promise.all([
                 fetch(ENDPOINT_URL + "?query=" + encodeURIComponent(profileQuery), { headers: { 'Accept': 'application/json' } }),
                 fetch(ENDPOINT_URL + "?query=" + encodeURIComponent(worksQuery), { headers: { 'Accept': 'application/json' } })
@@ -329,27 +349,34 @@
             const jsonProfile = await resProfile.json();
             const jsonWorks = await resWorks.json();
 
-            const data = { aliases: [], sites: [], solo: [], collab_host: [], collab_part: [] };
+            // データの仕分け用コンテナ（全項目対応）
+            const data = { 
+                aliases: [], sites: [], styles: [], refs: [], notes: [], 
+                solo: [], collab_host: [], collab_part: [] 
+            };
 
-            // プロフィール（活動サイトの優先度処理）
+            // 【プロフィール処理】
             let bestSite = null;
             jsonProfile.results.bindings.forEach(b => {
                 const prop = b.p.value;
-                if (prop.includes("alias")) {
-                    let val = b.o.value;
-                    try { val = decodeURIComponent(val).replace(/_/g, ' '); } catch(e) {}
-                    if (!data.aliases.includes(val)) data.aliases.push(val);
-                }
+                let val = b.o.value;
+
                 if (prop.includes("url")) {
-                    const url = b.o.value;
-                    if (!bestSite || getUrlPriority(url) > getUrlPriority(bestSite)) {
-                        bestSite = url;
+                    if (!bestSite || getUrlPriority(val) > getUrlPriority(bestSite)) {
+                        bestSite = val; // URL優先度判定
                     }
+                } else {
+                    // URL以外はデコードして格納
+                    try { val = decodeURIComponent(val).replace(/_/g, ' '); } catch(e) {}
+                    if (prop.includes("alias") && !data.aliases.includes(val)) data.aliases.push(val);
+                    if (prop.includes("style") && !data.styles.includes(val)) data.styles.push(val);
+                    if (prop.includes("reference") && !data.refs.includes(val)) data.refs.push(val);
+                    if (prop.includes("note") && !data.notes.includes(val)) data.notes.push(val);
                 }
             });
             if (bestSite) data.sites.push(bestSite);
 
-            // 作品リスト（作品URLの優先度処理）
+            // 【作品リスト処理】
             const processWorks = (array, b) => {
                 const wName = b.workName.value;
                 const wUrl = b.workUrl ? b.workUrl.value : null;
@@ -359,14 +386,14 @@
                     array.push({ name: wName, url: wUrl });
                 } else {
                     if (wUrl && getUrlPriority(wUrl) > getUrlPriority(existing.url)) {
-                        existing.url = wUrl; // 優先度が高いURLで上書き
+                        existing.url = wUrl; 
                     }
                 }
             };
 
             jsonWorks.results.bindings.forEach(b => {
                 const role = b.role.value;
-                // workTypeが未設定の場合は個人作をデフォルトにする
+                // workTypeが存在しない場合は、役割から推測して補完する
                 let wType = b.workType ? b.workType.value : "個人作";
                 if (role === "participant" && !b.workType) wType = "合作";
 
@@ -375,12 +402,16 @@
                 if (wType === "合作" && role === "participant") processWorks(data.collab_part, b);
             });
 
+            // 【画面への描画処理】
             document.getElementById('detail-name').innerText = authorName;
 
-            const renderSimpleList = (id, array, isLink = false) => {
+            // 汎用描画ヘルパー（通常テキスト・リンク・バッジに対応）
+            const renderList = (id, array, isLink = false, isBadge = false) => {
                 const el = document.getElementById(id);
                 if (array.length === 0) {
                     el.innerHTML = '<span class="text-muted">（データなし）</span>';
+                } else if (isBadge) {
+                    el.innerHTML = array.map(item => `<span class="badge-style">${item}</span>`).join(' ');
                 } else if (isLink) {
                     el.innerHTML = array.map(item => `<a href="${item}" target="_blank" class="tag-link">🔗 ${item}</a>`).join(', ');
                 } else {
@@ -388,22 +419,29 @@
                 }
             };
 
-            // 作品リストの描画（カンマ区切り）
+            // 作品リスト描画ヘルパー（カンマ区切り）
             const renderWorksList = (id, array) => {
                 const el = document.getElementById(id);
                 if (array.length === 0) {
-                    el.innerHTML = '<span class="text-muted">（データなし）</span>';
+                    el.innerHTML = '<span class="text-muted">（なし）</span>';
                     return;
                 }
                 el.innerHTML = array.map(w => w.url ? `<a href="${w.url}" target="_blank" class="tag-link">${w.name}</a>` : `<span>${w.name}</span>`).join('<span class="work-separator">, </span>');
             };
 
-            renderSimpleList('detail-aliases', data.aliases);
-            renderSimpleList('detail-sites', data.sites, true);
+            renderList('detail-aliases', data.aliases);
+            renderList('detail-styles', data.styles, false, true); // バッジとして描画
+            renderList('detail-sites', data.sites, true);          // リンクとして描画
+            renderList('detail-refs', data.refs);
+            
+            // 備考は改行を保持して表示
+            document.getElementById('detail-notes').innerText = data.notes.length > 0 ? data.notes[0] : "（データなし）";
+
             renderWorksList('detail-solo', data.solo);
             renderWorksList('detail-host', data.collab_host);
             renderWorksList('detail-part', data.collab_part);
 
+            // ローディングを消して実データを表示
             document.getElementById('detail-loading').style.display = 'none';
             document.getElementById('detail-content').style.display = 'block';
 
