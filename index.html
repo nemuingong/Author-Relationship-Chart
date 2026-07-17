@@ -35,7 +35,7 @@
         .close-btn-top { position: absolute; top: 15px; right: 20px; font-size: 30px; background: none; border: none; cursor: pointer; color: #666; }
         .close-btn-top:hover { color: #333; }
 
-        /* 作者詳細モーダル（全項目対応版） */
+        /* 作者詳細モーダル (指定項目のみ) */
         #author-detail-modal {
             display: none; position: fixed; top: 5%; left: 50%; transform: translateX(-50%);
             width: 95%; max-width: 800px; background: #f8f9fa; z-index: 200;
@@ -53,9 +53,6 @@
         .text-muted { color: #6c757d; font-size: 0.9em; }
         .loading-spinner { text-align: center; padding: 40px; color: #0056b3; font-weight: bold; }
         .work-separator { color: #dee2e6; margin: 0 8px; font-weight: normal; }
-        
-        /* バッジスタイル（作風用） */
-        .badge-style { display: inline-block; background: #0dcaf0; color: #000; padding: 3px 8px; border-radius: 4px; border: 1px solid #0aa2c0; font-size: 0.85em; margin: 2px; }
     </style>
 </head>
 <body>
@@ -87,7 +84,7 @@
     </div>
     <small style="color:#666; font-size: 12px; line-height: 1.5;">
         • <span style="color:#0056b3; font-weight:bold;">クリック / 検索: 繋がりをハイライト</span><br>
-        • <span style="color:#d32f2f; font-weight:bold;">ダブルクリック: 作者詳細・作品リンクを表示</span>
+        • <span style="color:#d32f2f; font-weight:bold;">ダブルクリック: 作者詳細を表示</span>
     </small>
 
     <div id="status">準備完了</div>
@@ -96,7 +93,7 @@
 <div id="network-container"></div>
 <div id="modal-overlay" onclick="closeModal()"></div>
 
-<!-- 作者詳細モーダル (全項目復元版) -->
+<!-- 作者詳細モーダル (指定項目のみ) -->
 <div id="author-detail-modal">
     <button class="close-btn-top" onclick="closeModal()">&times;</button>
     
@@ -117,23 +114,11 @@
                 <div class="wb-value-col" id="detail-aliases"></div>
             </div>
             <div class="wb-statement-group">
-                <div class="wb-label-col">作風・属性 (Style)</div>
-                <div class="wb-value-col" id="detail-styles"></div>
-            </div>
-            <div class="wb-statement-group">
                 <div class="wb-label-col">活動サイト (Website)</div>
                 <div class="wb-value-col" id="detail-sites"></div>
             </div>
-            <div class="wb-statement-group">
-                <div class="wb-label-col">参考元 (Reference)</div>
-                <div class="wb-value-col" id="detail-refs"></div>
-            </div>
-            <div class="wb-statement-group">
-                <div class="wb-label-col">備考 (Note)</div>
-                <div class="wb-value-col" id="detail-notes" style="white-space: pre-wrap;"></div>
-            </div>
 
-            <h4 style="margin-top: 30px; border-bottom: 2px solid #ddd; padding-bottom: 5px; font-size: 1.1rem;">作品リスト (自動集計)</h4>
+            <h4 style="margin-top: 30px; border-bottom: 2px solid #ddd; padding-bottom: 5px; font-size: 1.1rem;">作品リスト</h4>
             
             <div class="wb-statement-group">
                 <div class="wb-label-col">個人作</div>
@@ -159,6 +144,7 @@
 
     window.onload = function() { loadData(); };
 
+    // URLの優先度判定 (YouTube > ニコニコ > X)
     function getUrlPriority(url) {
         if (!url) return 0;
         const lowerUrl = url.toLowerCase();
@@ -201,11 +187,9 @@
             const jsonRefs = await resRefs.json();
             
             const rawData = jsonRefs.results.bindings.map(b => {
-                let sName = b.source.value;
-                let tName = b.target.value;
-                try { sName = decodeURIComponent(sName); } catch(e) {}
-                try { tName = decodeURIComponent(tName); } catch(e) {}
-                return [sName.replace(/_/g, ' '), tName.replace(/_/g, ' ')];
+                let sName = decodeURIComponent(b.source.value).replace(/_/g, ' ');
+                let tName = decodeURIComponent(b.target.value).replace(/_/g, ' ');
+                return [sName, tName];
             });
 
             const nodeNames = new Set();
@@ -299,7 +283,7 @@
     }
 
     // =========================================================
-    // 【高速化＆全項目取得版】 作者詳細モーダル処理
+    // 高速・確実版 作者詳細モーダル処理 (作品のURLも含む)
     // =========================================================
     async function openAuthorDetailModal(authorName) {
         document.getElementById('author-detail-modal').style.display = 'block';
@@ -307,40 +291,38 @@
         document.getElementById('detail-loading').style.display = 'block';
         document.getElementById('detail-content').style.display = 'none';
 
-        const safeNameForUri = encodeURIComponent(authorName.replace(/ /g, '_'));
-        const safeString = authorName.replace(/"/g, '\\"');
-
-        // 1. プロフィール情報（別名, 活動サイト, 作風, 参考元, 備考）をまとめて取得
+        // 1. 別名と活動サイトURLを取得 (作者ノードから)
         const profileQuery = `
             PREFIX ex: <http://example.org/bat/>
             PREFIX schema1: <http://schema.org/>
-            SELECT DISTINCT ?p ?o WHERE {
-                BIND(IRI(CONCAT("http://example.org/bat/Author_", "${safeNameForUri}")) AS ?uri)
-                ?uri ?p ?o .
-                FILTER(?p IN (ex:alias, schema1:url, ex:style, ex:reference, ex:note))
+            SELECT DISTINCT ?alias ?url WHERE {
+                BIND(IRI(CONCAT("http://example.org/bat/Author_", ENCODE_FOR_URI("${authorName}"))) AS ?authorUri)
+                OPTIONAL { ?authorUri ex:alias ?alias . }
+                OPTIONAL { ?authorUri schema1:url ?url . }
             }
         `;
 
-        // 2. 作品情報（作者自身のURI、または登録されている別名に紐づく作品を漏れなく取得）
+        // 2. 作者名と別名の両方を使って、関連する作品と「その作品のURL」を取得
+        // ※workTypeがない作品も拾えるようにOPTIONALで処理
         const worksQuery = `
             PREFIX ex: <http://example.org/bat/>
             PREFIX schema1: <http://schema.org/>
             SELECT DISTINCT ?workName ?workType ?role ?workUrl WHERE {
-                BIND(IRI(CONCAT("http://example.org/bat/Author_", "${safeNameForUri}")) AS ?authorUri)
-                { BIND("${safeString}" AS ?creditName) } UNION { ?authorUri ex:alias ?creditName . }
-
+                BIND(IRI(CONCAT("http://example.org/bat/Author_", ENCODE_FOR_URI("${authorName}"))) AS ?authorUri)
+                
+                { BIND("${authorName}" AS ?searchName) } UNION { ?authorUri ex:alias ?searchName . }
+                
                 ?work a ex:StickAnimation ; schema1:name ?workName .
                 OPTIONAL { ?work ex:workType ?workType . }
                 OPTIONAL { ?work schema1:url ?workUrl . }
                 
-                { ?work ex:author ?creditName . BIND("author" AS ?role) }
+                { ?work ex:author ?searchName . BIND("author" AS ?role) }
                 UNION
-                { ?work ex:participant ?creditName . BIND("participant" AS ?role) }
+                { ?work ex:participant ?searchName . BIND("participant" AS ?role) }
             }
         `;
 
         try {
-            // クエリの並行実行で高速化
             const [resProfile, resWorks] = await Promise.all([
                 fetch(ENDPOINT_URL + "?query=" + encodeURIComponent(profileQuery), { headers: { 'Accept': 'application/json' } }),
                 fetch(ENDPOINT_URL + "?query=" + encodeURIComponent(worksQuery), { headers: { 'Accept': 'application/json' } })
@@ -349,34 +331,25 @@
             const jsonProfile = await resProfile.json();
             const jsonWorks = await resWorks.json();
 
-            // データの仕分け用コンテナ（全項目対応）
-            const data = { 
-                aliases: [], sites: [], styles: [], refs: [], notes: [], 
-                solo: [], collab_host: [], collab_part: [] 
-            };
+            const data = { aliases: [], sites: [], solo: [], collab_host: [], collab_part: [] };
 
-            // 【プロフィール処理】
+            // プロフィールの処理 (別名とサイトURL)
             let bestSite = null;
             jsonProfile.results.bindings.forEach(b => {
-                const prop = b.p.value;
-                let val = b.o.value;
-
-                if (prop.includes("url")) {
-                    if (!bestSite || getUrlPriority(val) > getUrlPriority(bestSite)) {
-                        bestSite = val; // URL優先度判定
+                if (b.alias) {
+                    let aliasName = decodeURIComponent(b.alias.value).replace(/_/g, ' ');
+                    if (!data.aliases.includes(aliasName)) data.aliases.push(aliasName);
+                }
+                if (b.url) {
+                    const urlVal = b.url.value;
+                    if (!bestSite || getUrlPriority(urlVal) > getUrlPriority(bestSite)) {
+                        bestSite = urlVal;
                     }
-                } else {
-                    // URL以外はデコードして格納
-                    try { val = decodeURIComponent(val).replace(/_/g, ' '); } catch(e) {}
-                    if (prop.includes("alias") && !data.aliases.includes(val)) data.aliases.push(val);
-                    if (prop.includes("style") && !data.styles.includes(val)) data.styles.push(val);
-                    if (prop.includes("reference") && !data.refs.includes(val)) data.refs.push(val);
-                    if (prop.includes("note") && !data.notes.includes(val)) data.notes.push(val);
                 }
             });
             if (bestSite) data.sites.push(bestSite);
 
-            // 【作品リスト処理】
+            // 作品リストの処理 (重複排除しつつ、優先度の高いURLを保持)
             const processWorks = (array, b) => {
                 const wName = b.workName.value;
                 const wUrl = b.workUrl ? b.workUrl.value : null;
@@ -384,16 +357,13 @@
                 let existing = array.find(w => w.name === wName);
                 if (!existing) {
                     array.push({ name: wName, url: wUrl });
-                } else {
-                    if (wUrl && getUrlPriority(wUrl) > getUrlPriority(existing.url)) {
-                        existing.url = wUrl; 
-                    }
+                } else if (wUrl && getUrlPriority(wUrl) > getUrlPriority(existing.url)) {
+                    existing.url = wUrl;
                 }
             };
 
             jsonWorks.results.bindings.forEach(b => {
                 const role = b.role.value;
-                // workTypeが存在しない場合は、役割から推測して補完する
                 let wType = b.workType ? b.workType.value : "個人作";
                 if (role === "participant" && !b.workType) wType = "合作";
 
@@ -402,16 +372,13 @@
                 if (wType === "合作" && role === "participant") processWorks(data.collab_part, b);
             });
 
-            // 【画面への描画処理】
             document.getElementById('detail-name').innerText = authorName;
 
-            // 汎用描画ヘルパー（通常テキスト・リンク・バッジに対応）
-            const renderList = (id, array, isLink = false, isBadge = false) => {
+            // 描画ヘルパー
+            const renderSimpleList = (id, array, isLink = false) => {
                 const el = document.getElementById(id);
                 if (array.length === 0) {
                     el.innerHTML = '<span class="text-muted">（データなし）</span>';
-                } else if (isBadge) {
-                    el.innerHTML = array.map(item => `<span class="badge-style">${item}</span>`).join(' ');
                 } else if (isLink) {
                     el.innerHTML = array.map(item => `<a href="${item}" target="_blank" class="tag-link">🔗 ${item}</a>`).join(', ');
                 } else {
@@ -419,7 +386,7 @@
                 }
             };
 
-            // 作品リスト描画ヘルパー（カンマ区切り）
+            // 作品リストの描画ヘルパー (カンマ区切り)
             const renderWorksList = (id, array) => {
                 const el = document.getElementById(id);
                 if (array.length === 0) {
@@ -429,19 +396,12 @@
                 el.innerHTML = array.map(w => w.url ? `<a href="${w.url}" target="_blank" class="tag-link">${w.name}</a>` : `<span>${w.name}</span>`).join('<span class="work-separator">, </span>');
             };
 
-            renderList('detail-aliases', data.aliases);
-            renderList('detail-styles', data.styles, false, true); // バッジとして描画
-            renderList('detail-sites', data.sites, true);          // リンクとして描画
-            renderList('detail-refs', data.refs);
-            
-            // 備考は改行を保持して表示
-            document.getElementById('detail-notes').innerText = data.notes.length > 0 ? data.notes[0] : "（データなし）";
-
+            renderSimpleList('detail-aliases', data.aliases);
+            renderSimpleList('detail-sites', data.sites, true);
             renderWorksList('detail-solo', data.solo);
             renderWorksList('detail-host', data.collab_host);
             renderWorksList('detail-part', data.collab_part);
 
-            // ローディングを消して実データを表示
             document.getElementById('detail-loading').style.display = 'none';
             document.getElementById('detail-content').style.display = 'block';
 
