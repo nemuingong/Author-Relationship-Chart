@@ -19,15 +19,9 @@
         
         /* 検索システム */
         .search-container { display: flex; gap: 8px; margin-bottom: 15px; }
-        .search-input { 
-            flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; 
-            font-size: 14px; outline: none; 
-        }
+        .search-input { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; outline: none; }
         .search-input:focus { border-color: #0056b3; }
-        .search-btn { 
-            padding: 10px 15px; background: #0056b3; color: white; border: none; 
-            border-radius: 6px; cursor: pointer; font-weight: bold; 
-        }
+        .search-btn { padding: 10px 15px; background: #0056b3; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .search-btn:hover { background: #004494; }
 
         /* 凡例 */
@@ -61,7 +55,9 @@
         .tag-link:hover { text-decoration: underline; color: #004494; }
         .text-muted { color: #6c757d; font-size: 0.9em; }
         .loading-spinner { text-align: center; padding: 40px; color: #0056b3; font-weight: bold; }
-        .work-separator { color: #dee2e6; margin: 0 8px; font-weight: normal; }
+        
+        /* 作品のカンマ区切り用 */
+        .work-separator { color: #202122; margin-right: 6px; }
     </style>
 </head>
 <body>
@@ -69,7 +65,6 @@
 <div class="controls">
     <h3>🔗 作者作風 影響相関図</h3>
     
-    <!-- 検索システム -->
     <div class="search-container">
         <input type="text" id="search-input" class="search-input" list="author-list" placeholder="作者名を入力..." onkeydown="if(event.key==='Enter') searchAuthor()">
         <datalist id="author-list"></datalist>
@@ -88,10 +83,6 @@
     </div>
     
     <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
-    <div style="font-size: 12px; color: #495057; line-height: 1.5; margin-bottom: 10px;">
-        <strong>[ 影響を受けた作者 ] → [ 影響元 ]</strong><br>
-        矢印は「誰を参考にしているか」を示します。
-    </div>
     <small style="color:#666; font-size: 12px; line-height: 1.5;">
         • <span style="color:#0056b3; font-weight:bold;">クリック / 検索: 繋がりをハイライト</span><br>
         • <span style="color:#d32f2f; font-weight:bold;">ダブルクリック: 作者詳細・作品リンクを表示</span>
@@ -101,22 +92,16 @@
 </div>
 
 <div id="network-container"></div>
-
 <div id="modal-overlay" onclick="closeModal()"></div>
 
 <!-- 作者詳細モーダル -->
 <div id="author-detail-modal">
     <button class="close-btn-top" onclick="closeModal()">&times;</button>
-    
-    <div id="detail-loading" class="loading-spinner">
-        ⏳ 作者情報と作品データを取得中...
-    </div>
-
+    <div id="detail-loading" class="loading-spinner">⏳ データを取得中...</div>
     <div id="detail-content" style="display: none; padding-bottom: 30px;">
         <div class="wb-header">
             <h1 class="wb-title" id="detail-name"></h1>
         </div>
-
         <div style="padding: 0 20px;">
             <h2 style="font-size: 1.2rem; border-bottom: 2px solid #ddd; padding-bottom: 5px; margin-bottom: 15px;">基本情報</h2>
             <div class="wb-statement-group">
@@ -153,16 +138,22 @@
 
     window.onload = function() { loadData(); };
 
-    // 人数によるグラデーション色変更
+    // URLの優先度を判定する関数（数値が大きいほど優先）
+    function getUrlPriority(url) {
+        if (!url) return 0;
+        const lowerUrl = url.toLowerCase();
+        if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) return 3; // Youtube
+        if (lowerUrl.includes('nicovideo.jp') || lowerUrl.includes('nico.ms')) return 2; // ニコニコ
+        if (lowerUrl.includes('x.com') || lowerUrl.includes('twitter.com')) return 1;    // X (Twitter)
+        return 0; // その他
+    }
+
     function getColorByDegree(degree) {
         if (degree === 0) return { background: "#e9ecef", border: "#ced4da" }; 
         const palette = [
-            { background: "#e3f2fd", border: "#90caf9" }, 
-            { background: "#90caf9", border: "#42a5f5" }, 
-            { background: "#ffcc80", border: "#ffa726" }, 
-            { background: "#ffb74d", border: "#fb8c00" }, 
-            { background: "#ff8a65", border: "#f4511e" }, 
-            { background: "#e57373", border: "#e53935" }  
+            { background: "#e3f2fd", border: "#90caf9" }, { background: "#90caf9", border: "#42a5f5" }, 
+            { background: "#ffcc80", border: "#ffa726" }, { background: "#ffb74d", border: "#fb8c00" }, 
+            { background: "#ff8a65", border: "#f4511e" }, { background: "#e57373", border: "#e53935" }  
         ];
         return palette[Math.min(degree - 1, palette.length - 1)];
     }
@@ -171,7 +162,6 @@
         const status = document.getElementById('status');
         status.innerHTML = "📡 データを取得中...";
 
-        // 参照関係の取得（別名統合処理込み）
         const queryRefs = `
             PREFIX ex: <http://example.org/bat/>
             SELECT DISTINCT ?source ?target WHERE {
@@ -201,17 +191,15 @@
             const nodeNames = new Set();
             rawData.forEach(d => { nodeNames.add(d[0]); nodeNames.add(d[1]); });
 
-            // 影響を与えた人数（入次数）のカウント
             const inDegree = {};
             nodeNames.forEach(n => inDegree[n] = 0);
             rawData.forEach(d => { inDegree[d[1]] += 1; });
 
             const nodesData = Array.from(nodeNames).map(name => {
                 const degree = inDegree[name];
-                const colorSettings = getColorByDegree(degree);
                 return { 
                     id: name, label: name, 
-                    color: { background: colorSettings.background, border: colorSettings.border },
+                    color: { background: getColorByDegree(degree).background, border: getColorByDegree(degree).border },
                     font: { color: "#212121" }, value: 20,
                     title: `影響を与えた人数: ${degree}人`
                 };
@@ -227,7 +215,6 @@
                 }
             });
 
-            // 検索ボックスのサジェスト（datalist）を作成
             const datalist = document.getElementById('author-list');
             Array.from(nodeNames).sort().forEach(name => {
                 const option = document.createElement('option');
@@ -249,49 +236,24 @@
         edgesSet = new vis.DataSet(edgesData);
         
         const options = {
-            nodes: { 
-                shape: 'dot', font: { size: 14, strokeWidth: 0, face: 'Arial, sans-serif' }, 
-                scaling: { min: 20, max: 20 }, borderWidth: 2, 
-                shadow: { enabled: true, color: 'rgba(0,0,0,0.1)', size: 5, x: 2, y: 2 } 
-            },
+            nodes: { shape: 'dot', font: { size: 14, strokeWidth: 0, face: 'Arial, sans-serif' }, scaling: { min: 20, max: 20 }, borderWidth: 2, shadow: { enabled: true, color: 'rgba(0,0,0,0.1)', size: 5, x: 2, y: 2 } },
             edges: { width: 1.5, smooth: { type: 'dynamic' }, hoverWidth: 1.5 },
             physics: { forceAtlas2Based: { gravitationalConstant: -60, springLength: 150, springConstant: 0.08 }, solver: 'forceAtlas2Based', stabilization: { iterations: 150 } },
             interaction: { hover: true, tooltipDelay: 100 }
         };
 
         network = new vis.Network(container, { nodes: nodesSet, edges: edgesSet }, options);
-
-        // クリックでハイライト処理
-        network.on("selectNode", function (params) {
-            highlightConnections(params.nodes[0]);
-        });
-
-        // 選択解除でハイライトリセット
+        network.on("selectNode", function (params) { highlightConnections(params.nodes[0]); });
         network.on("deselectNode", resetHighlight);
-
-        // ダブルクリックで詳細表示
-        network.on("doubleClick", function (params) {
-            if (params.nodes.length > 0) {
-                openAuthorDetailModal(params.nodes[0]);
-            }
-        });
+        network.on("doubleClick", function (params) { if (params.nodes.length > 0) openAuthorDetailModal(params.nodes[0]); });
     }
 
-    // =========================================================
-    // ハイライト・検索機能
-    // =========================================================
     function highlightConnections(nodeId) {
         const connectedNodes = network.getConnectedNodes(nodeId);
         const connectedEdges = network.getConnectedEdges(nodeId);
-
-        let updateNodes = [];
-        nodesSet.forEach(node => { 
-            updateNodes.push({ id: node.id, opacity: (node.id === nodeId || connectedNodes.includes(node.id)) ? 1 : 0.15 }); 
-        });
+        let updateNodes = []; nodesSet.forEach(node => { updateNodes.push({ id: node.id, opacity: (node.id === nodeId || connectedNodes.includes(node.id)) ? 1 : 0.15 }); });
         nodesSet.update(updateNodes);
-
-        let updateEdges = [];
-        edgesSet.forEach(edge => {
+        let updateEdges = []; edgesSet.forEach(edge => {
             const isConnected = connectedEdges.includes(edge.id);
             updateEdges.push({ id: edge.id, width: isConnected ? 2.5 : 1.5, color: { color: isConnected ? '#0056b3' : '#adb5bd', opacity: isConnected ? 1 : 0.1 } });
         });
@@ -307,9 +269,7 @@
     function searchAuthor() {
         const input = document.getElementById('search-input').value.trim();
         if (!input) return;
-
         if (nodesSet.get(input)) {
-            // ノードを選択状態にし、カメラをズーム、ハイライトを実行
             network.selectNodes([input]);
             network.focus(input, { scale: 1.2, animation: { duration: 500, easingFunction: "easeInOutQuad" } });
             highlightConnections(input);
@@ -319,7 +279,7 @@
     }
 
     // =========================================================
-    // 作者詳細機能 (ダブルクリック時)
+    // 作者詳細データの取得とモーダル表示（最適化・優先度対応）
     // =========================================================
     async function openAuthorDetailModal(authorName) {
         document.getElementById('author-detail-modal').style.display = 'block';
@@ -327,24 +287,31 @@
         document.getElementById('detail-loading').style.display = 'block';
         document.getElementById('detail-content').style.display = 'none';
 
+        // 検索時の文字化けを防ぐため、スペースをアンダーバーに戻してエンコード
+        const safeNameForUri = encodeURIComponent(authorName.replace(/ /g, '_'));
+        const safeString = authorName.replace(/"/g, '\\"');
+
+        // URIからプロフィール（別名・活動URL）を取得
         const profileQuery = `
             PREFIX ex: <http://example.org/bat/>
             PREFIX schema1: <http://schema.org/>
             SELECT ?p ?o WHERE {
-                BIND(IRI(CONCAT("http://example.org/bat/Author_", ENCODE_FOR_URI("${authorName}"))) AS ?uri)
+                BIND(IRI(CONCAT("http://example.org/bat/Author_", "${safeNameForUri}")) AS ?uri)
                 ?uri ?p ?o .
                 FILTER(?p IN (ex:alias, schema1:url))
             }
         `;
 
+        // 漏れをなくすため、ex:workType を OPTIONAL（任意）にして全て取得する
         const worksQuery = `
             PREFIX ex: <http://example.org/bat/>
             PREFIX schema1: <http://schema.org/>
             SELECT DISTINCT ?workName ?workType ?role ?workUrl WHERE {
-                BIND(IRI(CONCAT("http://example.org/bat/Author_", ENCODE_FOR_URI("${authorName}"))) AS ?authorUri)
-                { BIND("${authorName}" AS ?creditName) } UNION { ?authorUri ex:alias ?creditName . }
+                BIND(IRI(CONCAT("http://example.org/bat/Author_", "${safeNameForUri}")) AS ?authorUri)
+                { BIND("${safeString}" AS ?creditName) } UNION { ?authorUri ex:alias ?creditName . }
 
-                ?work a ex:StickAnimation ; schema1:name ?workName ; ex:workType ?workType .
+                ?work a ex:StickAnimation ; schema1:name ?workName .
+                OPTIONAL { ?work ex:workType ?workType . }
                 OPTIONAL { ?work schema1:url ?workUrl . }
                 
                 { ?work ex:author ?creditName . BIND("author" AS ?role) }
@@ -364,25 +331,45 @@
 
             const data = { aliases: [], sites: [], solo: [], collab_host: [], collab_part: [] };
 
+            // プロフィール（活動サイトの優先度処理）
+            let bestSite = null;
             jsonProfile.results.bindings.forEach(b => {
                 const prop = b.p.value;
-                let val = b.o.value;
-                try { val = decodeURIComponent(val).replace(/_/g, ' '); } catch(e) {}
-                if (prop.includes("alias")) data.aliases.push(val);
-                if (prop.includes("url")) data.sites.push(b.o.value);
+                if (prop.includes("alias")) {
+                    let val = b.o.value;
+                    try { val = decodeURIComponent(val).replace(/_/g, ' '); } catch(e) {}
+                    if (!data.aliases.includes(val)) data.aliases.push(val);
+                }
+                if (prop.includes("url")) {
+                    const url = b.o.value;
+                    if (!bestSite || getUrlPriority(url) > getUrlPriority(bestSite)) {
+                        bestSite = url;
+                    }
+                }
             });
+            if (bestSite) data.sites.push(bestSite);
 
+            // 作品リスト（作品URLの優先度処理）
             const processWorks = (array, b) => {
                 const wName = b.workName.value;
                 const wUrl = b.workUrl ? b.workUrl.value : null;
+                
                 let existing = array.find(w => w.name === wName);
-                if (!existing) array.push({ name: wName, url: wUrl });
-                else if (!existing.url && wUrl) existing.url = wUrl;
+                if (!existing) {
+                    array.push({ name: wName, url: wUrl });
+                } else {
+                    if (wUrl && getUrlPriority(wUrl) > getUrlPriority(existing.url)) {
+                        existing.url = wUrl; // 優先度が高いURLで上書き
+                    }
+                }
             };
 
             jsonWorks.results.bindings.forEach(b => {
-                const wType = b.workType.value;
                 const role = b.role.value;
+                // workTypeが未設定の場合は個人作をデフォルトにする
+                let wType = b.workType ? b.workType.value : "個人作";
+                if (role === "participant" && !b.workType) wType = "合作";
+
                 if (wType === "個人作" && role === "author") processWorks(data.solo, b);
                 if ((wType === "合作" || wType === "企画") && role === "author") processWorks(data.collab_host, b);
                 if (wType === "合作" && role === "participant") processWorks(data.collab_part, b);
@@ -395,19 +382,20 @@
                 if (array.length === 0) {
                     el.innerHTML = '<span class="text-muted">（データなし）</span>';
                 } else if (isLink) {
-                    el.innerHTML = array.map(item => `<a href="${item}" target="_blank" class="tag-link">🔗 ${item}</a>`).join('<br>');
+                    el.innerHTML = array.map(item => `<a href="${item}" target="_blank" class="tag-link">🔗 ${item}</a>`).join(', ');
                 } else {
                     el.innerHTML = array.join(', ');
                 }
             };
 
+            // 作品リストの描画（カンマ区切り）
             const renderWorksList = (id, array) => {
                 const el = document.getElementById(id);
                 if (array.length === 0) {
                     el.innerHTML = '<span class="text-muted">（データなし）</span>';
                     return;
                 }
-                el.innerHTML = array.map(w => w.url ? `<a href="${w.url}" target="_blank" class="tag-link">${w.name}</a>` : `<span>${w.name}</span>`).join('<span class="work-separator">|</span>');
+                el.innerHTML = array.map(w => w.url ? `<a href="${w.url}" target="_blank" class="tag-link">${w.name}</a>` : `<span>${w.name}</span>`).join('<span class="work-separator">, </span>');
             };
 
             renderSimpleList('detail-aliases', data.aliases);
