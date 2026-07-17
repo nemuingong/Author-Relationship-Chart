@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>棒バトLOD 作者参考相関図</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: "Helvetica Neue", Arial, sans-serif; overflow: hidden; background-color: #f8f9fa; }
+        #network-container { width: 100vw; height: 100vh; }
+        
+        .controls {
+            position: absolute; top: 15px; left: 15px;
+            background: rgba(255, 255, 255, 0.95); padding: 20px;
+            border-radius: 12px; z-index: 100;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); max-width: 340px; border: 1px solid #ddd;
+        }
+        h3 { margin: 0 0 10px 0; font-size: 18px; color: #333; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 6px; font-size: 14px; color: #495057; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; margin-right: 10px; border: 1px solid rgba(0,0,0,0.15); }
+        #status { font-weight: bold; font-size: 14px; color: #0d6efd; margin-top: 10px; }
+        .error { color: #dc3545; }
+        
+        .btn-ranking {
+            width: 100%; padding: 12px; margin-bottom: 15px;
+            background: #0056b3; color: #ffffff; border: none;
+            border-radius: 6px; cursor: pointer; font-weight: bold;
+            font-size: 15px; transition: background 0.2s;
+        }
+        .btn-ranking:hover { background: #004494; }
+
+        #modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.5); z-index: 150; backdrop-filter: blur(2px);
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .modal-header h2 { margin: 0; font-size: 20px; color: #333; }
+        .close-btn { background: none; border: none; font-size: 28px; cursor: pointer; color: #999; transition: color 0.2s; }
+        .close-btn:hover { color: #333; }
+
+        #ranking-modal {
+            display: none; position: fixed; top: 10%; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 500px; background: white; z-index: 200;
+            border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); padding: 25px;
+            max-height: 80vh; overflow-y: auto;
+        }
+        .ranking-col { background: #fff; padding: 10px; border-radius: 8px; }
+        .rank-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+        .rank-table td { padding: 10px 5px; border-bottom: 1px solid #f1f3f5; color: #343a40; }
+        .rank-badge { font-weight: bold; color: #6c757d; width: 35px; text-align: center; }
+        .rank-count { text-align: right; font-weight: bold; color: #d32f2f; font-size: 16px; }
+
+        /* 作者詳細モーダル用CSS */
+        #author-detail-modal {
+            display: none; position: fixed; top: 5%; left: 50%; transform: translateX(-50%);
+            width: 95%; max-width: 800px; background: #f8f9fa; z-index: 200;
+            border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-height: 90vh; overflow-y: auto; color: #202122;
+        }
+        .wb-header { background: #fff; padding: 20px; border-bottom: 1px solid #c8ccd1; margin-bottom: 20px; border-radius: 8px 8px 0 0; }
+        .wb-title { font-family: 'Linux Libertine','Georgia','Times',serif; font-size: 1.8rem; border-bottom: 1px solid #a2a9b1; padding-bottom: 5px; margin-bottom: 5px; }
+        .wb-id { color: #72777d; font-size: 0.8em; font-weight: normal; margin-left: 10px; }
+        .wb-statement-group { background: #fff; border: 1px solid #c8ccd1; margin-bottom: -1px; display: flex; }
+        .wb-label-col { background-color: #eaecf0; padding: 10px 15px; font-weight: bold; color: #0645ad; border-right: 1px solid #c8ccd1; width: 25%; min-width: 120px; }
+        .wb-value-col { padding: 10px 15px; width: 75%; font-size: 1rem; line-height: 1.6; }
+        .badge-style { display: inline-block; background: #0dcaf0; color: #000; padding: 3px 8px; border-radius: 4px; border: 1px solid #0aa2c0; font-size: 0.85em; margin: 2px; }
+        .tag-link { text-decoration: none; color: #0645ad; cursor: pointer; }
+        .tag-link:hover { text-decoration: underline; }
+        .text-muted { color: #6c757d; font-size: 0.9em; }
+        .loading-spinner { text-align: center; padding: 40px; color: #0645ad; font-weight: bold; }
+        .close-btn-top { position: absolute; top: 15px; right: 20px; font-size: 30px; background: none; border: none; cursor: pointer; color: #666; }
+        
+        /* 作品リンク用の見やすい区切り線 */
+        .work-separator { color: #dee2e6; margin: 0 8px; font-weight: normal; }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <h3>🔗 作者の参考相関図</h3>
+    
+    <button class="btn-ranking" onclick="showRanking()">🏆 被参考数ランキング</button>
+
+    <div id="legend-area">
+        <div style="font-size: 14px; margin-bottom: 8px; color: #333; font-weight: bold;">【ノードの色（被参考数）】</div>
+        <div class="legend-item"><span class="dot" style="background:#e9ecef"></span>0人（誰からも参考にされていない）</div>
+        <div class="legend-item"><span class="dot" style="background:#e3f2fd"></span>1人</div>
+        <div class="legend-item"><span class="dot" style="background:#90caf9"></span>2人</div>
+        <div class="legend-item"><span class="dot" style="background:#ffcc80"></span>3人</div>
+        <div class="legend-item"><span class="dot" style="background:#ffb74d"></span>4人</div>
+        <div class="legend-item"><span class="dot" style="background:#ff8a65"></span>5人</div>
+        <div class="legend-item"><span class="dot" style="background:#e57373"></span>6人以上（多大なる影響）</div>
+    </div>
+    <div id="status">準備完了</div>
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+    <small style="color:#666; font-size: 12px; line-height: 1.5;">
+        • マウスホイール: 拡大/縮小<br>
+        • ドラッグ: 移動<br>
+        • <span style="color:#0056b3; font-weight:bold;">クリック: 関連をハイライト</span><br>
+        • <span style="color:#d32f2f; font-weight:bold;">ダブルクリック: 作者詳細を表示</span>
+    </small>
+</div>
+
+<div id="network-container"></div>
+
+<div id="modal-overlay" onclick="closeAllModals()"></div>
+
+<div id="ranking-modal">
+    <div class="modal-header">
+        <h2>🏆 よく参考にされる作者 (Top 10)</h2>
+        <button class="close-btn" onclick="closeAllModals()">&times;</button>
+    </div>
+    <div id="ranking-content"></div>
+</div>
+
+<!-- 作者詳細モーダル -->
+<div id="author-detail-modal">
+    <button class="close-btn-top" onclick="closeAllModals()">&times;</button>
+    
+    <div id="detail-loading" class="loading-spinner">
+        ⏳ 作者情報を取得しています...
+    </div>
+
+    <div id="detail-content" style="display: none; padding-bottom: 30px;">
+        <div class="wb-header">
+            <h1 class="wb-title">
+                <span id="detail-name"></span>
+                <span class="wb-id" id="detail-id"></span>
+            </h1>
+            <div class="text-muted">棒人間バトル作者 / Stick Figure Animator</div>
+        </div>
+
+        <div style="padding: 0 20px;">
+            <h2 style="font-size: 1.2rem; border-bottom: 2px solid #ddd; padding-bottom: 5px; margin-bottom: 15px;">文 (Statements)</h2>
+            
+            <div class="wb-statement-group">
+                <div class="wb-label-col">別名 (Aliases)</div>
+                <div class="wb-value-col" id="detail-aliases"></div>
+            </div>
+            <div class="wb-statement-group">
+                <div class="wb-label-col">作風・属性 (Style)</div>
+                <div class="wb-value-col" id="detail-styles"></div>
+            </div>
+            <div class="wb-statement-group">
+                <div class="wb-label-col">活動サイト (Website)</div>
+                <div class="wb-value-col" id="detail-sites"></div>
+            </div>
+            <div class="wb-statement-group">
+                <div class="wb-label-col">参考元 (Reference)</div>
+                <div class="wb-value-col" id="detail-refs"></div>
+            </div>
+            <div class="wb-statement-group">
+                <div class="wb-label-col">備考 (Note)</div>
+                <div class="wb-value-col" id="detail-notes" style="white-space: pre-wrap;"></div>
+            </div>
+
+            <h4 style="margin-top: 30px; border-bottom: 2px solid #ddd; padding-bottom: 5px; font-size: 1.1rem;">作品リスト (自動集計)</h4>
+            
+            <div class="wb-statement-group">
+                <div class="wb-label-col">個人作</div>
+                <div class="wb-value-col" id="detail-solo"></div>
+            </div>
+            <div class="wb-statement-group">
+                <div class="wb-label-col">主催した合作</div>
+                <div class="wb-value-col" id="detail-host"></div>
+            </div>
+            <div class="wb-statement-group">
+                <div class="wb-label-col">参加した合作</div>
+                <div class="wb-value-col" id="detail-part"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    const ENDPOINT_URL = "https://aiueo9999.pythonanywhere.com/sparql";
+    let network = null;
+
+    window.onload = function() { loadData(); };
+
+    function getColorByDegree(degree) {
+        if (degree === 0) return { background: "#e9ecef", border: "#ced4da" }; 
+        const palette = [
+            { background: "#e3f2fd", border: "#90caf9" }, 
+            { background: "#90caf9", border: "#42a5f5" }, 
+            { background: "#ffcc80", border: "#ffa726" }, 
+            { background: "#ffb74d", border: "#fb8c00" }, 
+            { background: "#ff8a65", border: "#f4511e" }, 
+            { background: "#e57373", border: "#e53935" }  
+        ];
+        return palette[Math.min(degree - 1, palette.length - 1)];
+    }
+
+    async function loadData() {
+        const status = document.getElementById('status');
+        status.innerHTML = "📡 データを取得中...";
+
+        const queryRefs = `
+            PREFIX ex: <http://example.org/bat/>
+            SELECT DISTINCT ?source ?target WHERE {
+                ?author_uri ex:reference ?raw_target .
+                BIND(REPLACE(STR(?author_uri), "^.*Author_", "") AS ?source)
+                OPTIONAL { 
+                    ?target_uri ex:alias ?raw_target .
+                    BIND(REPLACE(STR(?target_uri), "^.*Author_", "") AS ?main_target)
+                }
+                BIND(COALESCE(?main_target, ?raw_target) AS ?target)
+            }
+        `;
+
+        try {
+            const resRefs = await fetch(ENDPOINT_URL + "?query=" + encodeURIComponent(queryRefs), { headers: { 'Accept': 'application/json' } });
+            if (!resRefs.ok) throw new Error("データの取得に失敗しました");
+            const jsonRefs = await resRefs.json();
+            const bindingsRefs = jsonRefs.results.bindings;
+
+            if (bindingsRefs.length === 0) {
+                status.innerHTML = `<span class="error">データが0件です。</span>`;
+                return;
+            }
+
+            const rawData = bindingsRefs.map(b => {
+                let sName = b.source.value;
+                let tName = b.target.value;
+                
+                try { sName = decodeURIComponent(sName); } catch(e) {}
+                try { tName = decodeURIComponent(tName); } catch(e) {}
+                
+                sName = sName.replace(/_/g, ' ');
+                tName = tName.replace(/_/g, ' ');
+                
+                return [sName, tName];
+            });
+
+            const nodeNames = new Set();
+            rawData.forEach(d => { nodeNames.add(d[0]); nodeNames.add(d[1]); });
+
+            const inDegree = {};
+            nodeNames.forEach(n => inDegree[n] = 0);
+            rawData.forEach(d => { inDegree[d[1]] += 1; });
+
+            const nodes = Array.from(nodeNames).map(name => {
+                const degree = inDegree[name];
+                const colorSettings = getColorByDegree(degree);
+                return { 
+                    id: name, label: name, 
+                    color: { background: colorSettings.background, border: colorSettings.border },
+                    font: { color: "#212121" }, value: 20,
+                    title: `被参考数: ${degree}回\n（ダブルクリックで詳細を表示）`
+                };
+            });
+
+            const edges = [];
+            const exists = new Set();
+            rawData.forEach(d => {
+                const edgeId = d[0] + "->" + d[1];
+                if (!exists.has(edgeId)) {
+                    edges.push({ id: edgeId, from: d[0], to: d[1], arrows: 'to', color: { color: '#adb5bd', opacity: 0.7 } });
+                    exists.add(edgeId);
+                }
+            });
+
+            status.innerHTML = `✅ 描画完了 (作者数: ${nodes.length})`;
+            drawGraph(nodes, edges);
+
+        } catch (e) {
+            status.innerHTML = `<span class="error">エラー発生: ${e.message}</span>`;
+        }
+    }
+
+    function drawGraph(nodesData, edgesData) {
+        const container = document.getElementById('network-container');
+        const nodesSet = new vis.DataSet(nodesData);
+        const edgesSet = new vis.DataSet(edgesData);
+        
+        const options = {
+            nodes: { 
+                shape: 'dot', font: { size: 14, strokeWidth: 0, face: 'Arial, sans-serif' }, 
+                scaling: { min: 20, max: 20 }, borderWidth: 2, 
+                shadow: { enabled: true, color: 'rgba(0,0,0,0.1)', size: 5, x: 2, y: 2 } 
+            },
+            edges: { width: 1.5, smooth: { type: 'dynamic' }, hoverWidth: 1.5 },
+            physics: { forceAtlas2Based: { gravitationalConstant: -60, springLength: 150, springConstant: 0.08 }, solver: 'forceAtlas2Based', stabilization: { iterations: 150 } },
+            interaction: { hover: true, tooltipDelay: 100 }
+        };
+
+        if (network) network.destroy();
+        network = new vis.Network(container, { nodes: nodesSet, edges: edgesSet }, options);
+
+        network.on("selectNode", function (params) {
+            const selectedNodeId = params.nodes[0];
+            const connectedNodes = network.getConnectedNodes(selectedNodeId);
+            const connectedEdges = network.getConnectedEdges(selectedNodeId);
+
+            let updateNodes = [];
+            nodesSet.forEach(node => { updateNodes.push({ id: node.id, opacity: (node.id === selectedNodeId || connectedNodes.includes(node.id)) ? 1 : 0.15 }); });
+            nodesSet.update(updateNodes);
+
+            let updateEdges = [];
+            edgesSet.forEach(edge => {
+                const isConnected = connectedEdges.includes(edge.id);
+                updateEdges.push({ id: edge.id, width: isConnected ? 2.5 : 1.5, color: { color: isConnected ? '#495057' : '#adb5bd', opacity: isConnected ? 1 : 0.1 } });
+            });
+            edgesSet.update(updateEdges);
+        });
+
+        network.on("deselectNode", function () {
+            let updateNodes = []; nodesSet.forEach(node => { updateNodes.push({ id: node.id, opacity: 1 }); }); nodesSet.update(updateNodes);
+            let updateEdges = []; edgesSet.forEach(edge => { updateEdges.push({ id: edge.id, width: 1.5, color: { color: '#adb5bd', opacity: 0.7 } }); }); edgesSet.update(updateEdges);
+        });
+
+        network.on("doubleClick", function (params) {
+            if (params.nodes.length > 0) {
+                openAuthorDetailModal(params.nodes[0]);
+            }
+        });
+    }
+
+    async function openAuthorDetailModal(authorName) {
+        document.getElementById('author-detail-modal').style.display = 'block';
+        document.getElementById('modal-overlay').style.display = 'block';
+        document.getElementById('detail-loading').style.display = 'block';
+        document.getElementById('detail-content').style.display = 'none';
+
+        const profileQuery = `
+            PREFIX ex: <http://example.org/bat/>
+            PREFIX schema1: <http://schema.org/>
+            SELECT ?p ?o WHERE {
+                BIND(IRI(CONCAT("http://example.org/bat/Author_", ENCODE_FOR_URI("${authorName}"))) AS ?uri)
+                ?uri ?p ?o .
+                FILTER(?p IN (ex:alias, ex:style, schema1:url, ex:reference, ex:note))
+            }
+        `;
+
+        // 【修正】作品ごとのURL（schema1:url）も一緒に取得するクエリ
+        const worksQuery = `
+            PREFIX ex: <http://example.org/bat/>
+            PREFIX schema1: <http://schema.org/>
+            SELECT DISTINCT ?workName ?workType ?role ?workUrl WHERE {
+                BIND(IRI(CONCAT("http://example.org/bat/Author_", ENCODE_FOR_URI("${authorName}"))) AS ?authorUri)
+                { BIND("${authorName}" AS ?creditName) } UNION { ?authorUri ex:alias ?creditName . }
+
+                ?work a ex:StickAnimation ; schema1:name ?workName ; ex:workType ?workType .
+                OPTIONAL { ?work schema1:url ?workUrl . }
+                
+                { ?work ex:author ?creditName . BIND("author" AS ?role) }
+                UNION
+                { ?work ex:participant ?creditName . BIND("participant" AS ?role) }
+            }
+        `;
+
+        try {
+            const [resProfile, resWorks] = await Promise.all([
+                fetch(ENDPOINT_URL + "?query=" + encodeURIComponent(profileQuery), { headers: { 'Accept': 'application/json' } }),
+                fetch(ENDPOINT_URL + "?query=" + encodeURIComponent(worksQuery), { headers: { 'Accept': 'application/json' } })
+            ]);
+
+            const jsonProfile = await resProfile.json();
+            const jsonWorks = await resWorks.json();
+
+            // 作品リストはURL情報を保持するため、オブジェクト { name, url } の配列にする
+            const data = { aliases: [], styles: [], sites: [], refs: [], notes: [], solo: [], collab_host: [], collab_part: [] };
+
+            jsonProfile.results.bindings.forEach(b => {
+                const prop = b.p.value;
+                let val = b.o.value;
+                try { val = decodeURIComponent(val).replace(/_/g, ' '); } catch(e) {}
+
+                if (prop.includes("alias")) data.aliases.push(val);
+                if (prop.includes("style")) data.styles.push(val);
+                if (prop.includes("url")) data.sites.push(b.o.value);
+                if (prop.includes("reference")) data.refs.push(val);
+                if (prop.includes("note")) data.notes.push(val);
+            });
+
+            // 【修正】作品データを重複排除しつつ振り分け（URLの優先保持）
+            const processWorks = (array, b) => {
+                const wName = b.workName.value;
+                const wUrl = b.workUrl ? b.workUrl.value : null;
+                
+                let existing = array.find(w => w.name === wName);
+                if (!existing) {
+                    array.push({ name: wName, url: wUrl });
+                } else if (!existing.url && wUrl) {
+                    existing.url = wUrl; // URLがある方を優先
+                }
+            };
+
+            jsonWorks.results.bindings.forEach(b => {
+                const wType = b.workType.value;
+                const role = b.role.value;
+
+                if (wType === "個人作" && role === "author") processWorks(data.solo, b);
+                if ((wType === "合作" || wType === "企画") && role === "author") processWorks(data.collab_host, b);
+                if (wType === "合作" && role === "participant") processWorks(data.collab_part, b);
+            });
+
+            document.getElementById('detail-name').innerText = authorName;
+            document.getElementById('detail-id').innerText = `(${encodeURIComponent(authorName)})`;
+
+            // 配列（文字列）用の汎用描画ヘルパー
+            const renderList = (elementId, array, isLink = false, isBadge = false) => {
+                const el = document.getElementById(elementId);
+                if (array.length === 0) {
+                    el.innerHTML = '<span class="text-muted">（なし）</span>';
+                    return;
+                }
+                if (isBadge) {
+                    el.innerHTML = array.map(item => `<span class="badge-style">${item}</span>`).join(' ');
+                } else if (isLink) {
+                    el.innerHTML = array.map(item => `<a href="${item}" target="_blank" class="tag-link">🔗 ${item}</a>`).join('<br>');
+                } else {
+                    el.innerHTML = array.join(', ');
+                }
+            };
+
+            // 【追加】作品リスト用の描画ヘルパー（URLがある場合はリンク化）
+            const renderWorks = (elementId, worksArray) => {
+                const el = document.getElementById(elementId);
+                if (worksArray.length === 0) {
+                    el.innerHTML = '<span class="text-muted">（なし）</span>';
+                    return;
+                }
+                // 操作性向上のため、区切り文字をカンマから縦線に変更して間隔をあける
+                el.innerHTML = worksArray.map(w => {
+                    if (w.url) {
+                        return `<a href="${w.url}" target="_blank" rel="noopener noreferrer" class="tag-link">${w.name}</a>`;
+                    } else {
+                        return `<span>${w.name}</span>`;
+                    }
+                }).join('<span class="work-separator">|</span>');
+            };
+
+            renderList('detail-aliases', data.aliases);
+            renderList('detail-styles', data.styles, false, true);
+            renderList('detail-sites', data.sites, true);
+            renderList('detail-refs', data.refs);
+            
+            // 作品リストは専用関数で描画
+            renderWorks('detail-solo', data.solo);
+            renderWorks('detail-host', data.collab_host);
+            renderWorks('detail-part', data.collab_part);
+            
+            document.getElementById('detail-notes').innerText = data.notes.length > 0 ? data.notes[0] : "（なし）";
+
+            document.getElementById('detail-loading').style.display = 'none';
+            document.getElementById('detail-content').style.display = 'block';
+
+        } catch (e) {
+            document.getElementById('detail-loading').innerHTML = `<span class="error">データの取得に失敗しました。<br>${e.message}</span>`;
+        }
+    }
+
+    async function showRanking() {
+        document.getElementById('ranking-modal').style.display = 'block';
+        document.getElementById('modal-overlay').style.display = 'block';
+        const content = document.getElementById('ranking-content');
+        content.innerHTML = '<div style="text-align:center; padding:20px; color:#6c757d;">⏳ 集計中...</div>';
+
+        const query = `
+            PREFIX ex: <http://example.org/bat/>
+            SELECT ?target (COUNT(DISTINCT ?source) AS ?cnt) WHERE {
+                ?source_uri ex:reference ?raw_target .
+                BIND(REPLACE(STR(?source_uri), "^.*Author_", "") AS ?source)
+                OPTIONAL { 
+                    ?target_uri ex:alias ?raw_target .
+                    BIND(REPLACE(STR(?target_uri), "^.*Author_", "") AS ?main_target)
+                }
+                BIND(COALESCE(?main_target, ?raw_target) AS ?target)
+            } GROUP BY ?target ORDER BY DESC(?cnt) LIMIT 10
+        `;
+
+        try {
+            const response = await fetch(ENDPOINT_URL + "?query=" + encodeURIComponent(query), { headers: { 'Accept': 'application/json' } });
+            const json = await response.json();
+            const bindings = json.results.bindings;
+
+            if (bindings.length === 0) {
+                content.innerHTML = '<p style="text-align:center; color:#999;">データがありません</p>';
+                return;
+            }
+
+            let html = '<div class="ranking-col"><table class="rank-table">';
+            bindings.forEach((row, i) => {
+                let name = row.target.value;
+                try { name = decodeURIComponent(name); } catch(e) {}
+                name = name.replace(/_/g, ' ');
+
+                const cnt = row.cnt.value;
+                let badge = i + 1;
+                if(badge === 1) badge = '🥇';
+                if(badge === 2) badge = '🥈';
+                if(badge === 3) badge = '🥉';
+                
+                html += `<tr>
+                    <td class="rank-badge">${badge}</td>
+                    <td>${name}</td>
+                    <td class="rank-count">${cnt} <span style="font-size:12px; color:#adb5bd;">回</span></td>
+                </tr>`;
+            });
+            html += '</table></div>';
+            content.innerHTML = html;
+
+        } catch(e) {
+            content.innerHTML = `<p style="color:#d32f2f;">エラー: ${e.message}</p>`;
+        }
+    }
+
+    function closeAllModals() {
+        document.getElementById('ranking-modal').style.display = 'none';
+        document.getElementById('author-detail-modal').style.display = 'none';
+        document.getElementById('modal-overlay').style.display = 'none';
+    }
+</script>
+</body>
+</html>
