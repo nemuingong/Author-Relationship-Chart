@@ -35,7 +35,6 @@
         .close-btn-top { position: absolute; top: 15px; right: 20px; font-size: 30px; background: none; border: none; cursor: pointer; color: #666; }
         .close-btn-top:hover { color: #333; }
 
-        /* 作者詳細モーダル (指定項目のみ) */
         #author-detail-modal {
             display: none; position: fixed; top: 5%; left: 50%; transform: translateX(-50%);
             width: 95%; max-width: 800px; background: #f8f9fa; z-index: 200;
@@ -93,7 +92,7 @@
 <div id="network-container"></div>
 <div id="modal-overlay" onclick="closeModal()"></div>
 
-<!-- 作者詳細モーダル (指定項目のみ) -->
+<!-- 作者詳細モーダル -->
 <div id="author-detail-modal">
     <button class="close-btn-top" onclick="closeModal()">&times;</button>
     
@@ -144,7 +143,17 @@
 
     window.onload = function() { loadData(); };
 
-    // URLの優先度判定 (YouTube > ニコニコ > X)
+    // 安全に文字列をデコードする関数（「100%」などのエラーを回避）
+    function safeDecode(str) {
+        if (!str) return "";
+        try {
+            return decodeURIComponent(str).replace(/_/g, ' ');
+        } catch (e) {
+            // デコードに失敗した場合（既にデコード済み、または特殊記号が含まれる場合）はそのまま返す
+            return str.replace(/_/g, ' ');
+        }
+    }
+
     function getUrlPriority(url) {
         if (!url) return 0;
         const lowerUrl = url.toLowerCase();
@@ -186,9 +195,10 @@
             if (!resRefs.ok) throw new Error("データの取得に失敗");
             const jsonRefs = await resRefs.json();
             
+            // 安全なデコード関数を使ってパース
             const rawData = jsonRefs.results.bindings.map(b => {
-                let sName = decodeURIComponent(b.source.value).replace(/_/g, ' ');
-                let tName = decodeURIComponent(b.target.value).replace(/_/g, ' ');
+                let sName = safeDecode(b.source.value);
+                let tName = safeDecode(b.target.value);
                 return [sName, tName];
             });
 
@@ -283,7 +293,7 @@
     }
 
     // =========================================================
-    // 高速・確実版 作者詳細モーダル処理 (作品のURLも含む)
+    // 作者詳細モーダル処理
     // =========================================================
     async function openAuthorDetailModal(authorName) {
         document.getElementById('author-detail-modal').style.display = 'block';
@@ -291,7 +301,7 @@
         document.getElementById('detail-loading').style.display = 'block';
         document.getElementById('detail-content').style.display = 'none';
 
-        // 1. 別名と活動サイトURLを取得 (作者ノードから)
+        // 1. 別名と活動サイトURLを取得
         const profileQuery = `
             PREFIX ex: <http://example.org/bat/>
             PREFIX schema1: <http://schema.org/>
@@ -302,8 +312,7 @@
             }
         `;
 
-        // 2. 作者名と別名の両方を使って、関連する作品と「その作品のURL」を取得
-        // ※workTypeがない作品も拾えるようにOPTIONALで処理
+        // 2. 作者名と別名の両方を使って、関連する作品を取得
         const worksQuery = `
             PREFIX ex: <http://example.org/bat/>
             PREFIX schema1: <http://schema.org/>
@@ -333,11 +342,11 @@
 
             const data = { aliases: [], sites: [], solo: [], collab_host: [], collab_part: [] };
 
-            // プロフィールの処理 (別名とサイトURL)
+            // プロフィールの処理
             let bestSite = null;
             jsonProfile.results.bindings.forEach(b => {
                 if (b.alias) {
-                    let aliasName = decodeURIComponent(b.alias.value).replace(/_/g, ' ');
+                    let aliasName = safeDecode(b.alias.value); // 安全なデコードを使用
                     if (!data.aliases.includes(aliasName)) data.aliases.push(aliasName);
                 }
                 if (b.url) {
@@ -349,9 +358,9 @@
             });
             if (bestSite) data.sites.push(bestSite);
 
-            // 作品リストの処理 (重複排除しつつ、優先度の高いURLを保持)
+            // 作品リストの処理
             const processWorks = (array, b) => {
-                const wName = b.workName.value;
+                const wName = b.workName.value; // 作品名はデコード不要
                 const wUrl = b.workUrl ? b.workUrl.value : null;
                 
                 let existing = array.find(w => w.name === wName);
@@ -374,7 +383,6 @@
 
             document.getElementById('detail-name').innerText = authorName;
 
-            // 描画ヘルパー
             const renderSimpleList = (id, array, isLink = false) => {
                 const el = document.getElementById(id);
                 if (array.length === 0) {
@@ -386,7 +394,6 @@
                 }
             };
 
-            // 作品リストの描画ヘルパー (カンマ区切り)
             const renderWorksList = (id, array) => {
                 const el = document.getElementById(id);
                 if (array.length === 0) {
