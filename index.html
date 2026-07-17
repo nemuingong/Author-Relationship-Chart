@@ -109,6 +109,10 @@
             <h1 class="wb-title" id="detail-name"></h1>
         </div>
 
+            <div style="padding: 0 20px; margin-bottom: 10px;">
+                <a id="open-soukan-btn" class="tag-link" target="_blank" href="#">🔗 外部作者ページを開く</a>
+            </div>
+
         <div style="padding: 0 20px;">
             <h2 style="font-size: 1.2rem; border-bottom: 2px solid #ddd; padding-bottom: 5px; margin-bottom: 15px;">基本情報</h2>
             
@@ -265,7 +269,21 @@
         network = new vis.Network(container, { nodes: nodesSet, edges: edgesSet }, options);
         network.on("selectNode", function (params) { highlightConnections(params.nodes[0]); });
         network.on("deselectNode", resetHighlight);
-        network.on("doubleClick", function (params) { if (params.nodes.length > 0) openAuthorDetailModal(params.nodes[0]); });
+        network.on("doubleClick", function (params) { if (params.nodes.length > 0) openSoukanPage(params.nodes[0]); });
+    }
+
+    // 外部の /soukan/<name> ページへ遷移する。表示名は '_' に置換して渡す。
+    function openSoukanPage(nodeIdOrName) {
+        if (!nodeIdOrName) return;
+        let key = nodeIdOrName;
+        try {
+            // nodeId が Author_ 形式であればそのまま使う
+            if (!/^Author_/.test(key)) {
+                key = key.replace(/ /g, '_');
+            }
+        } catch(e) {}
+        const url = 'https://aiueo9999.pythonanywhere.com/soukan/' + encodeURIComponent(key);
+        window.open(url, '_blank');
     }
 
     function highlightConnections(nodeId) {
@@ -404,6 +422,11 @@
 
             // 【画面への描画処理】
             document.getElementById('detail-name').innerText = authorName;
+            // モーダル内の外部ページリンクを設定
+            try {
+                const externalUrl = 'https://aiueo9999.pythonanywhere.com/soukan/' + safeNameForUri;
+                document.getElementById('open-soukan-btn').href = externalUrl;
+            } catch(e) {}
 
             // 汎用描画ヘルパー（通常テキスト・リンク・バッジに対応）
             const renderList = (id, array, isLink = false, isBadge = false) => {
