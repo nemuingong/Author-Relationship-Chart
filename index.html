@@ -2,79 +2,87 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>棒バト作者相関図</title>
+    <title>棒バト作者作風相関図</title>
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; font-family: "Helvetica Neue", Arial, sans-serif; overflow: hidden; background-color: #f8f9fa; }
+        /* 全体：標準的なゴシック体に変更し、実用的なツール感を引き出す */
+        body { margin: 0; padding: 0; font-family: "Meiryo", "Hiragino Kaku Gothic Pro", sans-serif; overflow: hidden; background-color: #f0f0f0; }
         #network-container { width: 100vw; height: 100vh; }
         
-        .controls-wrapper { position: absolute; top: 15px; left: 15px; z-index: 100; width: 100%; max-width: 360px; }
+        /* パネル枠：角丸とふわっとした影を廃止し、硬派な枠線と影に変更 */
+        .controls-wrapper { position: absolute; top: 15px; left: 15px; z-index: 100; width: 100%; max-width: 320px; }
         .controls-wrapper > summary { 
-            cursor: pointer; padding: 12px 15px; margin: 0; border-radius: 8px; 
-            background: rgba(255,255,255,0.95); border: 1px solid #ddd; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); color: #333; font-weight: bold; 
+            cursor: pointer; padding: 8px 12px; margin: 0; 
+            background: #e0e0e0; border: 1px solid #666; 
+            color: #111; font-weight: bold; font-size: 14px;
             list-style: none; display: flex; align-items: center; justify-content: space-between; 
-            transition: background 0.2s;
         }
-        .controls-wrapper > summary:hover { background: #fff; }
+        .controls-wrapper > summary:hover { background: #d0d0d0; }
         .controls-wrapper > summary::-webkit-details-marker { display: none; }
-        .controls-wrapper > summary::after { content: '▾'; font-size: 12px; color: #6c757d; }
-        .controls-wrapper:not([open]) > summary::after { content: '▸'; }
+        .controls-wrapper > summary::after { content: '▼'; font-size: 10px; color: #333; }
+        .controls-wrapper:not([open]) > summary::after { content: '▶'; }
         
         .controls {
-            background: rgba(255, 255, 255, 0.95); padding: 20px;
-            border-radius: 8px; margin-top: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid #ddd;
+            background: #fff; padding: 15px; 
+            border: 1px solid #666; border-top: none;
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.1);
         }
         
-        h3 { margin: 0 0 15px 0; font-size: 18px; color: #333; text-align: center; border-bottom: 2px solid #e9ecef; padding-bottom: 10px; }
+        /* 見出し：シンプルに下線のみ */
+        h3 { margin: 0 0 15px 0; font-size: 16px; color: #111; border-bottom: 2px solid #333; padding-bottom: 5px; }
         
-        .details-panel { margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .details-panel > summary { cursor: pointer; font-weight: 600; color: #2d3748; padding: 12px 15px; list-style: none; display: flex; justify-content: space-between; align-items: center; background: #f7fafc; transition: background 0.2s; }
-        .details-panel > summary:hover { background: #edf2f7; }
+        /* 折りたたみパネル：Wikiや個人サイトによくある硬めのスタイル */
+        .details-panel { margin-bottom: 15px; border: 1px solid #bbb; background: #fff; }
+        .details-panel > summary { cursor: pointer; font-weight: bold; font-size: 13px; color: #111; padding: 8px 10px; list-style: none; display: flex; justify-content: space-between; align-items: center; background: #eee; }
+        .details-panel > summary:hover { background: #e5e5e5; }
         .details-panel > summary::-webkit-details-marker { display: none; }
-        .details-panel > summary::after { content: '▾'; font-size: 12px; color: #a0aec0; }
-        .details-panel:not([open]) > summary::after { content: '▸'; }
-        .details-panel[open] > summary { border-bottom: 1px solid #e2e8f0; }
-        .details-content { padding: 15px; background: #ffffff; }
+        .details-panel > summary::after { content: '▼'; font-size: 10px; color: #666; }
+        .details-panel:not([open]) > summary::after { content: '▶'; }
+        .details-panel[open] > summary { border-bottom: 1px solid #bbb; }
+        .details-content { padding: 12px; }
         
-        .search-container { display: flex; gap: 8px; }
-        .search-input { flex-grow: 1; padding: 10px 12px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; outline: none; transition: all 0.2s; background: #f8f9fa; }
-        .search-input:focus { border-color: #3182ce; background: #fff; box-shadow: 0 0 0 3px rgba(49,130,206,0.1); }
-        .search-btn { padding: 10px 16px; background: #3182ce; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
-        .search-btn:hover { background: #2b6cb0; }
+        /* 検索周り：角丸をやめ、ブラウザ標準に近い無骨な見た目へ */
+        .search-container { display: flex; gap: 5px; }
+        .search-input { flex-grow: 1; padding: 6px; border: 1px solid #999; font-size: 13px; outline: none; }
+        .search-input:focus { border-color: #111; background: #ffffe0; }
+        .search-btn { padding: 6px 12px; background: #333; color: white; border: 1px solid #111; cursor: pointer; font-size: 13px; }
+        .search-btn:hover { background: #555; }
 
-        .legend-title { font-size: 13px; font-weight: bold; margin-bottom: 10px; color: #4a5568; }
-        .legend-button { display: flex; align-items: center; width: 100%; padding: 8px 12px; margin-bottom: 8px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fdfdfd; cursor: pointer; text-align: left; font-size: 13px; color: #4a5568; transition: all 0.2s; }
-        .legend-button:hover { background: #edf2f7; border-color: #cbd5e0; }
-        .legend-button.active { background: #ebf8ff; border-color: #63b3ed; color: #2b6cb0; font-weight: bold; }
-        .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; margin-right: 12px; border: 1px solid rgba(0,0,0,0.15); box-shadow: inset 0 1px 2px rgba(255,255,255,0.5); }
+        /* 概要ボタン：太文字や左枠線を使って選択状態を表現 */
+        .legend-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #111; border-left: 3px solid #666; padding-left: 6px; }
+        .legend-button { display: flex; align-items: center; width: 100%; padding: 6px 8px; margin-bottom: 4px; border: 1px solid #ddd; background: #f9f9f9; cursor: pointer; text-align: left; font-size: 12px; color: #333; }
+        .legend-button:hover { background: #eaeaea; border-color: #bbb; }
+        .legend-button.active { background: #fff; border-color: #333; font-weight: bold; border-left: 4px solid #333; color: #000; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; border: 1px solid #666; }
         
-        .author-list-box { margin-top: 15px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; background: #f7fafc; max-height: 200px; overflow-y: auto; }
-        .author-list-title { font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .author-list-content { font-size: 13px; color: #2d3748; line-height: 1.6; }
-        .author-list-content div { padding: 3px 0; border-bottom: 1px dashed #e2e8f0; }
+        /* 作者一覧リスト */
+        .author-list-box { margin-top: 15px; padding: 10px; border: 1px solid #bbb; background: #fdfdfd; max-height: 200px; overflow-y: scroll; }
+        .author-list-title { font-size: 12px; font-weight: bold; color: #111; margin-bottom: 6px; border-bottom: 1px dotted #999; padding-bottom: 3px; }
+        .author-list-content { font-size: 12px; color: #333; line-height: 1.5; }
+        .author-list-content div { padding: 2px 0; border-bottom: 1px solid #eee; }
         .author-list-content div:last-child { border-bottom: none; }
         
-        .info-text { font-size: 12px; color: #4a5568; line-height: 1.6; margin-top: 15px; padding: 12px; background: #f7fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
-        .info-text strong { color: #2d3748; display: block; margin-bottom: 6px; }
-        .info-text small { color: #718096; font-size: 11px; display: block; margin-top: 8px; }
+        /* ガイドテキスト */
+        .info-text { font-size: 11px; color: #444; line-height: 1.5; margin-top: 15px; padding: 10px; background: #fdfdfd; border: 1px dashed #aaa; }
+        .info-text strong { color: #111; display: block; margin-bottom: 4px; font-size: 12px; }
+        .info-text ul { margin: 8px 0 0 0; padding-left: 15px; }
+        .info-text li { margin-bottom: 3px; }
 
-        #status { font-weight: bold; font-size: 14px; color: #3182ce; margin-top: 15px; text-align: center; }
-        .error { color: #e53e3e; }
-        .text-muted { color: #6c757d; font-size: 0.9em; }
+        #status { font-weight: bold; font-size: 12px; color: #0056b3; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee; }
+        .error { color: #cc0000; }
+        .text-muted { color: #888; font-size: 11px; }
     </style>
 </head>
 <body>
 
 <details class="controls-wrapper" open>
-    <summary>⚙️ 操作パネル</summary>
+    <summary>操作パネル</summary>
     <div class="controls-inner">
         <div class="controls">
-            <h3>🔗 棒バト作者作風相関図</h3>
+            <h3>棒バト作者作風相関図</h3>
 
             <details class="details-panel" open>
-                <summary>🔎 検索</summary>
+                <summary>検索</summary>
                 <div class="details-content">
                     <div class="search-container">
                         <input type="text" id="search-input" class="search-input" list="author-list" placeholder="作者名を入力..." onkeydown="if(event.key==='Enter') searchAuthor()">
@@ -85,10 +93,10 @@
             </details>
 
             <details class="details-panel" open>
-                <summary>📊 概要</summary>
+                <summary>概要</summary>
                 <div class="details-content">
                     <div id="legend-area">
-                        <div class="legend-title">【 影響を与えた人数 】</div>
+                        <div class="legend-title">影響を与えた人数</div>
                         <button class="legend-button" onclick="showAuthorsForDegree(0)" data-degree="0"><span class="dot" style="background:#e9ecef"></span><span>0人</span></button>
                         <button class="legend-button" onclick="showAuthorsForDegree(1)" data-degree="1"><span class="dot" style="background:#e3f2fd"></span><span>1人</span></button>
                         <button class="legend-button" onclick="showAuthorsForDegree(2)" data-degree="2"><span class="dot" style="background:#90caf9"></span><span>2人</span></button>
@@ -106,12 +114,12 @@
             </details>
             
             <div class="info-text">
-                <strong>[ 影響を受けた作者 ] → [ 影響元 ]</strong>
+                <strong>[影響を受けた作者] → [影響元]</strong>
                 矢印は「誰を参考にしているか」を示します。
-                <small>
-                    • <span style="color:#3182ce; font-weight:bold;">クリック / 検索: 繋がりをハイライト</span><br>
-                    • <span style="color:#e53e3e; font-weight:bold;">ダブルクリック: 作者詳細リンクを表示</span>
-                </small>
+                <ul>
+                    <li><span style="color:#0056b3;">クリック / 検索</span> : 繋がりをハイライト</li>
+                    <li><span style="color:#cc0000;">ダブルクリック</span> : 作者詳細リンクを表示</li>
+                </ul>
             </div>
 
             <div id="status">準備完了</div>
@@ -131,18 +139,18 @@
     window.onload = function() { loadData(); };
 
     function getColorByDegree(degree) {
-        if (degree === 0) return { background: "#e9ecef", border: "#ced4da" }; 
+        if (degree === 0) return { background: "#e9ecef", border: "#aaa" }; 
         const palette = [
             { background: "#e3f2fd", border: "#90caf9" }, { background: "#90caf9", border: "#42a5f5" }, 
             { background: "#ffcc80", border: "#ffa726" }, { background: "#ffb74d", border: "#fb8c00" }, 
-            { background: "#ff8a65", border: "#f4511e" }, { background: "#e57373", border: "#e53935" }  
+            { background: "#ff8a65", border: "#f4511e" }, { background: "#e57373", border: "#cc0000" }  
         ];
         return palette[Math.min(degree - 1, palette.length - 1)];
     }
 
     async function loadData() {
         const status = document.getElementById('status');
-        status.innerHTML = "📡 データを取得中...";
+        status.innerHTML = "データを取得中...";
 
         const queryRefs = `
             PREFIX ex: <http://example.org/bat/>
@@ -185,7 +193,7 @@
                 return { 
                     id: name, label: name, 
                     color: { background: getColorByDegree(degree).background, border: getColorByDegree(degree).border },
-                    font: { color: "#212121" }, value: 20,
+                    font: { color: "#111" }, value: 20,
                     title: `影響を与えた人数: ${degree}人`
                 };
             });
@@ -200,7 +208,7 @@
             rawData.forEach(d => {
                 const edgeId = d[0] + "->" + d[1];
                 if (!exists.has(edgeId)) {
-                    edgesData.push({ id: edgeId, from: d[0], to: d[1], arrows: { to: { enabled: true, scaleFactor: 1, type: 'arrow' } }, color: { color: '#adb5bd', opacity: 0.7, highlight: '#adb5bd', hover: '#adb5bd' } });
+                    edgesData.push({ id: edgeId, from: d[0], to: d[1], arrows: { to: { enabled: true, scaleFactor: 1, type: 'arrow' } }, color: { color: '#999', opacity: 0.7, highlight: '#666', hover: '#666' } });
                     exists.add(edgeId);
                 }
             });
@@ -212,7 +220,7 @@
                 datalist.appendChild(option);
             });
 
-            status.innerHTML = `✅ 描画完了`;
+            status.innerHTML = `描画完了`;
             drawGraph(nodesData, edgesData);
 
         } catch (e) {
@@ -226,7 +234,7 @@
         edgesSet = new vis.DataSet(edgesData);
         
         const options = {
-            nodes: { shape: 'dot', font: { size: 14, strokeWidth: 0, face: 'Arial, sans-serif' }, scaling: { min: 20, max: 20 }, borderWidth: 2, shadow: { enabled: true, color: 'rgba(0,0,0,0.1)', size: 5, x: 2, y: 2 } },
+            nodes: { shape: 'dot', font: { size: 14, strokeWidth: 0, face: 'Arial, sans-serif' }, scaling: { min: 20, max: 20 }, borderWidth: 2, shadow: { enabled: true, color: 'rgba(0,0,0,0.2)', size: 3, x: 2, y: 2 } },
             edges: { width: 1.5, smooth: { type: 'dynamic' }, hoverWidth: 1.5 },
             physics: { forceAtlas2Based: { gravitationalConstant: -60, springLength: 150, springConstant: 0.08 }, solver: 'forceAtlas2Based', stabilization: { iterations: 150 } },
             interaction: { hover: true, tooltipDelay: 100 }
@@ -263,10 +271,10 @@
         let updateEdges = []; edgesSet.forEach(edge => {
             const isConnected = connectedEdges.includes(edge.id);
             const isOutgoing = edge.from === nodeId;
-            const edgeColor = isConnected ? (isOutgoing ? '#e53935' : '#3182ce') : '#adb5bd';
+            const edgeColor = isConnected ? (isOutgoing ? '#cc0000' : '#0056b3') : '#999';
             updateEdges.push({
                 id: edge.id,
-                width: isConnected ? 2.8 : 1.5,
+                width: isConnected ? 2.5 : 1.0,
                 color: { color: edgeColor, opacity: isConnected ? 1 : 0.1, highlight: edgeColor, hover: edgeColor },
                 arrows: { to: { enabled: true, scaleFactor: 1, type: 'arrow', color: edgeColor } }
             });
@@ -277,7 +285,7 @@
     function resetHighlight() {
         if(!network) return;
         let updateNodes = []; nodesSet.forEach(node => { updateNodes.push({ id: node.id, opacity: 1 }); }); nodesSet.update(updateNodes);
-        let updateEdges = []; edgesSet.forEach(edge => { updateEdges.push({ id: edge.id, width: 1.5, color: { color: '#adb5bd', opacity: 0.7, highlight: '#adb5bd', hover: '#adb5bd' }, arrows: { to: { enabled: true, scaleFactor: 1, type: 'arrow', color: '#adb5bd' } } }); }); edgesSet.update(updateEdges);
+        let updateEdges = []; edgesSet.forEach(edge => { updateEdges.push({ id: edge.id, width: 1.5, color: { color: '#999', opacity: 0.7, highlight: '#666', hover: '#666' }, arrows: { to: { enabled: true, scaleFactor: 1, type: 'arrow', color: '#999' } } }); }); edgesSet.update(updateEdges);
     }
 
     function showAuthorsForDegree(degree) {
