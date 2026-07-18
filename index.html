@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>棒バトLOD 作者影響相関図</title>
+    <title>棒バト作者作風相関図</title>
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <style>
         body { margin: 0; padding: 0; font-family: "Helvetica Neue", Arial, sans-serif; overflow: hidden; background-color: #f8f9fa; }
@@ -24,6 +24,16 @@
 
         .legend-item { display: flex; align-items: center; margin-bottom: 6px; font-size: 13px; color: #495057; }
         .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; margin-right: 10px; border: 1px solid rgba(0,0,0,0.15); }
+        .details-panel { margin-bottom: 12px; border: 1px solid #e9ecef; border-radius: 8px; background: #f8f9fa; overflow: hidden; }
+        .details-panel > summary { cursor: pointer; font-weight: bold; color: #333; padding: 10px 12px; list-style: none; }
+        .details-panel > summary::-webkit-details-marker { display: none; }
+        .details-panel[open] > summary { border-bottom: 1px solid #e9ecef; }
+        .details-content { padding: 10px 12px 12px; }
+        .legend-button { display: flex; align-items: center; width: 100%; padding: 6px 8px; margin-bottom: 6px; border: 1px solid #dee2e6; border-radius: 6px; background: #fff; cursor: pointer; text-align: left; font-size: 13px; color: #495057; }
+        .legend-button:hover, .legend-button.active { background: #e8f0fe; border-color: #5b8def; }
+        .author-list-box { margin-top: 10px; padding: 10px; border: 1px solid #e9ecef; border-radius: 8px; background: #fff; max-height: 220px; overflow-y: auto; }
+        .author-list-title { font-size: 12px; font-weight: bold; color: #333; margin-bottom: 6px; }
+        .author-list-content { font-size: 12px; color: #495057; line-height: 1.5; }
         
         #status { font-weight: bold; font-size: 14px; color: #0d6efd; margin-top: 10px; }
         .error { color: #dc3545; }
@@ -61,26 +71,40 @@
 <body>
 
 <div class="controls">
-    <h3>🔗 作者作風 影響相関図</h3>
-    
-    <div class="search-container">
-        <input type="text" id="search-input" class="search-input" list="author-list" placeholder="作者名を入力..." onkeydown="if(event.key==='Enter') searchAuthor()">
-        <datalist id="author-list"></datalist>
-        <button class="search-btn" onclick="searchAuthor()">検索</button>
-    </div>
+    <h3>🔗 棒バト作者作風相関図</h3>
 
-    <div id="legend-area">
-        <div style="font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #333;">【 影響を与えた人数 】</div>
-        <div class="legend-item"><span class="dot" style="background:#e9ecef"></span>0人</div>
-        <div class="legend-item"><span class="dot" style="background:#e3f2fd"></span>1人</div>
-        <div class="legend-item"><span class="dot" style="background:#90caf9"></span>2人</div>
-        <div class="legend-item"><span class="dot" style="background:#ffcc80"></span>3人</div>
-        <div class="legend-item"><span class="dot" style="background:#ffb74d"></span>4人</div>
-        <div class="legend-item"><span class="dot" style="background:#ff8a65"></span>5人</div>
-        <div class="legend-item"><span class="dot" style="background:#e57373"></span>6人以上</div>
-    </div>
+    <details class="details-panel" open>
+        <summary>🔎 検索</summary>
+        <div class="details-content">
+            <div class="search-container">
+                <input type="text" id="search-input" class="search-input" list="author-list" placeholder="作者名を入力..." onkeydown="if(event.key==='Enter') searchAuthor()">
+                <datalist id="author-list"></datalist>
+                <button class="search-btn" onclick="searchAuthor()">検索</button>
+            </div>
+        </div>
+    </details>
+
+    <details class="details-panel" open>
+        <summary>📊 概要</summary>
+        <div class="details-content">
+            <div id="legend-area">
+                <div style="font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #333;">【 影響を与えた人数 】</div>
+                <button class="legend-button" onclick="showAuthorsForDegree(0)"><span class="dot" style="background:#e9ecef"></span><span>0人</span></button>
+                <button class="legend-button" onclick="showAuthorsForDegree(1)"><span class="dot" style="background:#e3f2fd"></span><span>1人</span></button>
+                <button class="legend-button" onclick="showAuthorsForDegree(2)"><span class="dot" style="background:#90caf9"></span><span>2人</span></button>
+                <button class="legend-button" onclick="showAuthorsForDegree(3)"><span class="dot" style="background:#ffcc80"></span><span>3人</span></button>
+                <button class="legend-button" onclick="showAuthorsForDegree(4)"><span class="dot" style="background:#ffb74d"></span><span>4人</span></button>
+                <button class="legend-button" onclick="showAuthorsForDegree(5)"><span class="dot" style="background:#ff8a65"></span><span>5人</span></button>
+                <button class="legend-button" onclick="showAuthorsForDegree(6)"><span class="dot" style="background:#e57373"></span><span>6人以上</span></button>
+            </div>
+
+            <div class="author-list-box">
+                <div class="author-list-title">作者一覧</div>
+                <div id="degree-authors-list" class="author-list-content">※人数を選択してください</div>
+            </div>
+        </div>
+    </details>
     
-    <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
     <div style="font-size: 12px; color: #495057; line-height: 1.5; margin-bottom: 10px;">
         <strong>[ 影響を受けた作者 ] → [ 影響元 ]</strong><br>
         矢印は「誰を参考にしているか」を示します。
@@ -160,6 +184,7 @@
     let network = null;
     let nodesSet = null;
     let edgesSet = null;
+    let degreeGroups = null;
 
     window.onload = function() { loadData(); };
 
@@ -219,8 +244,11 @@
             nodeNames.forEach(n => inDegree[n] = 0);
             rawData.forEach(d => { inDegree[d[1]] += 1; });
 
+            degreeGroups = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
             const nodesData = Array.from(nodeNames).map(name => {
                 const degree = inDegree[name];
+                const key = degree >= 6 ? 6 : degree;
+                degreeGroups[key].push(name);
                 return { 
                     id: name, label: name, 
                     color: { background: getColorByDegree(degree).background, border: getColorByDegree(degree).border },
@@ -228,6 +256,11 @@
                     title: `影響を与えた人数: ${degree}人`
                 };
             });
+
+            Object.keys(degreeGroups).forEach(key => {
+                degreeGroups[key].sort((a, b) => a.localeCompare(b, 'ja'));
+            });
+            showAuthorsForDegree(0);
 
             const edgesData = [];
             const exists = new Set();
@@ -293,7 +326,9 @@
         nodesSet.update(updateNodes);
         let updateEdges = []; edgesSet.forEach(edge => {
             const isConnected = connectedEdges.includes(edge.id);
-            updateEdges.push({ id: edge.id, width: isConnected ? 2.5 : 1.5, color: { color: isConnected ? '#0056b3' : '#adb5bd', opacity: isConnected ? 1 : 0.1 } });
+            const isOutgoing = edge.from === nodeId;
+            const edgeColor = isConnected ? (isOutgoing ? '#e53935' : '#0056b3') : '#adb5bd';
+            updateEdges.push({ id: edge.id, width: isConnected ? 2.8 : 1.5, color: { color: edgeColor, opacity: isConnected ? 1 : 0.1 } });
         });
         edgesSet.update(updateEdges);
     }
@@ -302,6 +337,26 @@
         if(!network) return;
         let updateNodes = []; nodesSet.forEach(node => { updateNodes.push({ id: node.id, opacity: 1 }); }); nodesSet.update(updateNodes);
         let updateEdges = []; edgesSet.forEach(edge => { updateEdges.push({ id: edge.id, width: 1.5, color: { color: '#adb5bd', opacity: 0.7 } }); }); edgesSet.update(updateEdges);
+    }
+
+    function showAuthorsForDegree(degree) {
+        const buttons = document.querySelectorAll('.legend-button');
+        buttons.forEach(btn => btn.classList.toggle('active', Number(btn.onclick?.toString().match(/showAuthorsForDegree\((\d+)/)?.[1] || 0) === degree));
+
+        const listBox = document.getElementById('degree-authors-list');
+        if (!degreeGroups) {
+            listBox.innerHTML = '<span class="text-muted">（データ読み込み中）</span>';
+            return;
+        }
+
+        const key = degree >= 6 ? 6 : degree;
+        const authors = degreeGroups[key] || [];
+        if (!authors.length) {
+            listBox.innerHTML = '<span class="text-muted">（該当なし）</span>';
+            return;
+        }
+
+        listBox.innerHTML = authors.map(name => `<div>${name}</div>`).join('');
     }
 
     function searchAuthor() {
