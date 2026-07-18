@@ -8,7 +8,6 @@
         body { margin: 0; padding: 0; font-family: "Helvetica Neue", Arial, sans-serif; overflow: hidden; background-color: #f8f9fa; }
         #network-container { width: 100vw; height: 100vh; }
         
-        /* 操作パネルの土台（ここにのみ absolute を設定して重なりを解消） */
         .controls-wrapper { position: absolute; top: 15px; left: 15px; z-index: 100; width: 100%; max-width: 360px; }
         .controls-wrapper > summary { 
             cursor: pointer; padding: 12px 15px; margin: 0; border-radius: 8px; 
@@ -22,7 +21,6 @@
         .controls-wrapper > summary::after { content: '▾'; font-size: 12px; color: #6c757d; }
         .controls-wrapper:not([open]) > summary::after { content: '▸'; }
         
-        /* absolute を外し、親要素に追従させるように修正 */
         .controls {
             background: rgba(255, 255, 255, 0.95); padding: 20px;
             border-radius: 8px; margin-top: 10px;
@@ -31,7 +29,6 @@
         
         h3 { margin: 0 0 15px 0; font-size: 18px; color: #333; text-align: center; border-bottom: 2px solid #e9ecef; padding-bottom: 10px; }
         
-        /* パネル全体のデザインを見やすく改善 */
         .details-panel { margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         .details-panel > summary { cursor: pointer; font-weight: 600; color: #2d3748; padding: 12px 15px; list-style: none; display: flex; justify-content: space-between; align-items: center; background: #f7fafc; transition: background 0.2s; }
         .details-panel > summary:hover { background: #edf2f7; }
@@ -41,62 +38,31 @@
         .details-panel[open] > summary { border-bottom: 1px solid #e2e8f0; }
         .details-content { padding: 15px; background: #ffffff; }
         
-        /* 検索周りのデザイン改善 */
         .search-container { display: flex; gap: 8px; }
         .search-input { flex-grow: 1; padding: 10px 12px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; outline: none; transition: all 0.2s; background: #f8f9fa; }
         .search-input:focus { border-color: #3182ce; background: #fff; box-shadow: 0 0 0 3px rgba(49,130,206,0.1); }
         .search-btn { padding: 10px 16px; background: #3182ce; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
         .search-btn:hover { background: #2b6cb0; }
 
-        /* 概要周りのデザイン改善 */
         .legend-title { font-size: 13px; font-weight: bold; margin-bottom: 10px; color: #4a5568; }
         .legend-button { display: flex; align-items: center; width: 100%; padding: 8px 12px; margin-bottom: 8px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fdfdfd; cursor: pointer; text-align: left; font-size: 13px; color: #4a5568; transition: all 0.2s; }
         .legend-button:hover { background: #edf2f7; border-color: #cbd5e0; }
         .legend-button.active { background: #ebf8ff; border-color: #63b3ed; color: #2b6cb0; font-weight: bold; }
         .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; margin-right: 12px; border: 1px solid rgba(0,0,0,0.15); box-shadow: inset 0 1px 2px rgba(255,255,255,0.5); }
         
-        /* 作者一覧リストの装飾 */
         .author-list-box { margin-top: 15px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; background: #f7fafc; max-height: 200px; overflow-y: auto; }
         .author-list-title { font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
         .author-list-content { font-size: 13px; color: #2d3748; line-height: 1.6; }
         .author-list-content div { padding: 3px 0; border-bottom: 1px dashed #e2e8f0; }
         .author-list-content div:last-child { border-bottom: none; }
         
-        /* ガイドテキスト */
         .info-text { font-size: 12px; color: #4a5568; line-height: 1.6; margin-top: 15px; padding: 12px; background: #f7fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
         .info-text strong { color: #2d3748; display: block; margin-bottom: 6px; }
         .info-text small { color: #718096; font-size: 11px; display: block; margin-top: 8px; }
 
         #status { font-weight: bold; font-size: 14px; color: #3182ce; margin-top: 15px; text-align: center; }
         .error { color: #e53e3e; }
-
-        /* モーダル関連（変更なし） */
-        #modal-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.5); z-index: 150; backdrop-filter: blur(2px);
-        }
-        .close-btn-top { position: absolute; top: 15px; right: 20px; font-size: 30px; background: none; border: none; cursor: pointer; color: #666; }
-        .close-btn-top:hover { color: #333; }
-
-        #author-detail-modal {
-            display: none; position: fixed; top: 5%; left: 50%; transform: translateX(-50%);
-            width: 95%; max-width: 800px; background: #f8f9fa; z-index: 200;
-            border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            max-height: 90vh; overflow-y: auto; color: #202122;
-        }
-        .wb-header { background: #fff; padding: 20px; border-bottom: 1px solid #c8ccd1; margin-bottom: 20px; border-radius: 8px 8px 0 0; }
-        .wb-title { font-size: 1.8rem; border-bottom: 1px solid #a2a9b1; padding-bottom: 5px; margin-bottom: 5px; font-weight: bold; }
-        .wb-statement-group { background: #fff; border: 1px solid #c8ccd1; margin-bottom: -1px; display: flex; }
-        .wb-label-col { background-color: #eaecf0; padding: 12px 15px; font-weight: bold; color: #0056b3; border-right: 1px solid #c8ccd1; width: 25%; min-width: 120px; }
-        .wb-value-col { padding: 12px 15px; width: 75%; font-size: 1rem; line-height: 1.6; }
-        
-        .tag-link { text-decoration: none; color: #0056b3; cursor: pointer; font-weight: bold; }
-        .tag-link:hover { text-decoration: underline; color: #004494; }
         .text-muted { color: #6c757d; font-size: 0.9em; }
-        .loading-spinner { text-align: center; padding: 40px; color: #0056b3; font-weight: bold; }
-        .work-separator { color: #dee2e6; margin: 0 8px; font-weight: normal; }
-        
-        .badge-style { display: inline-block; background: #0dcaf0; color: #000; padding: 3px 8px; border-radius: 4px; border: 1px solid #0aa2c0; font-size: 0.85em; margin: 2px; }
     </style>
 </head>
 <body>
@@ -144,76 +110,16 @@
                 矢印は「誰を参考にしているか」を示します。
                 <small>
                     • <span style="color:#3182ce; font-weight:bold;">クリック / 検索: 繋がりをハイライト</span><br>
-                    • <span style="color:#e53e3e; font-weight:bold;">ダブルクリック: 作者詳細・作品リンクを表示</span>
+                    • <span style="color:#e53e3e; font-weight:bold;">ダブルクリック: 作者詳細リンクを表示</span>
                 </small>
             </div>
 
             <div id="status">準備完了</div>
-        </div><!-- /.controls -->
-    </div><!-- /.controls-inner -->
+        </div>
+    </div>
 </details>
 
 <div id="network-container"></div>
-<div id="modal-overlay" onclick="closeModal()"></div>
-
-<!-- 作者詳細モーダル (全項目復元版) -->
-<div id="author-detail-modal">
-    <button class="close-btn-top" onclick="closeModal()">&times;</button>
-    
-    <div id="detail-loading" class="loading-spinner">
-        ⏳ データを取得中...<br><small style="font-weight:normal;">(高速化処理中)</small>
-    </div>
-
-    <div id="detail-content" style="display: none; padding-bottom: 30px;">
-        <div class="wb-header">
-            <h1 class="wb-title" id="detail-name"></h1>
-        </div>
-
-            <div style="padding: 0 20px; margin-bottom: 10px;">
-                <a id="open-soukan-btn" class="tag-link" target="_blank" href="#">🔗 外部作者ページを開く</a>
-            </div>
-
-        <div style="padding: 0 20px;">
-            <h2 style="font-size: 1.2rem; border-bottom: 2px solid #ddd; padding-bottom: 5px; margin-bottom: 15px;">基本情報</h2>
-            
-            <div class="wb-statement-group">
-                <div class="wb-label-col">別名 (Aliases)</div>
-                <div class="wb-value-col" id="detail-aliases"></div>
-            </div>
-            <div class="wb-statement-group">
-                <div class="wb-label-col">作風・属性 (Style)</div>
-                <div class="wb-value-col" id="detail-styles"></div>
-            </div>
-            <div class="wb-statement-group">
-                <div class="wb-label-col">活動サイト (Website)</div>
-                <div class="wb-value-col" id="detail-sites"></div>
-            </div>
-            <div class="wb-statement-group">
-                <div class="wb-label-col">参考元 (Reference)</div>
-                <div class="wb-value-col" id="detail-refs"></div>
-            </div>
-            <div class="wb-statement-group">
-                <div class="wb-label-col">備考 (Note)</div>
-                <div class="wb-value-col" id="detail-notes" style="white-space: pre-wrap;"></div>
-            </div>
-
-            <h4 style="margin-top: 30px; border-bottom: 2px solid #ddd; padding-bottom: 5px; font-size: 1.1rem;">作品リスト (自動集計)</h4>
-            
-            <div class="wb-statement-group">
-                <div class="wb-label-col">個人作</div>
-                <div class="wb-value-col" id="detail-solo"></div>
-            </div>
-            <div class="wb-statement-group">
-                <div class="wb-label-col">主催した合作</div>
-                <div class="wb-value-col" id="detail-host"></div>
-            </div>
-            <div class="wb-statement-group">
-                <div class="wb-label-col">参加した合作</div>
-                <div class="wb-value-col" id="detail-part"></div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <script type="text/javascript">
     const ENDPOINT_URL = "https://aiueo9999.pythonanywhere.com/sparql";
@@ -223,15 +129,6 @@
     let degreeGroups = null;
 
     window.onload = function() { loadData(); };
-
-    function getUrlPriority(url) {
-        if (!url) return 0;
-        const lowerUrl = url.toLowerCase();
-        if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) return 3;
-        if (lowerUrl.includes('nicovideo.jp') || lowerUrl.includes('nico.ms')) return 2;
-        if (lowerUrl.includes('x.com') || lowerUrl.includes('twitter.com')) return 1;
-        return 0;
-    }
 
     function getColorByDegree(degree) {
         if (degree === 0) return { background: "#e9ecef", border: "#ced4da" }; 
@@ -338,11 +235,14 @@
         network = new vis.Network(container, { nodes: nodesSet, edges: edgesSet }, options);
         network.on("selectNode", function (params) { highlightConnections(params.nodes[0]); });
         network.on("deselectNode", resetHighlight);
-        // ダブルクリックで外部遷移ではなくモーダルを開く
-        network.on("doubleClick", function (params) { if (params.nodes.length > 0) openAuthorDetailModal(params.nodes[0]); });
+        
+        network.on("doubleClick", function (params) { 
+            if (params.nodes.length > 0) {
+                openSoukanPage(params.nodes[0]); 
+            }
+        });
     }
 
-    // 外部の /soukan/<name> ページへ遷移する
     function openSoukanPage(nodeIdOrName) {
         if (!nodeIdOrName) return;
         let key = nodeIdOrName;
@@ -410,152 +310,6 @@
         } else {
             alert(`「${input}」はグラフ内に見つかりませんでした。`);
         }
-    }
-
-    // 作者詳細モーダル処理
-    async function openAuthorDetailModal(authorName) {
-        document.getElementById('author-detail-modal').style.display = 'block';
-        document.getElementById('modal-overlay').style.display = 'block';
-        document.getElementById('detail-loading').style.display = 'block';
-        document.getElementById('detail-content').style.display = 'none';
-
-        const safeNameForUri = encodeURIComponent(authorName.replace(/ /g, '_'));
-        const safeString = authorName.replace(/"/g, '\\"');
-
-        const profileQuery = `
-            PREFIX ex: <http://example.org/bat/>
-            PREFIX schema1: <http://schema.org/>
-            SELECT DISTINCT ?p ?o WHERE {
-                BIND(IRI(CONCAT("http://example.org/bat/Author_", "${safeNameForUri}")) AS ?uri)
-                ?uri ?p ?o .
-                FILTER(?p IN (ex:alias, schema1:url, ex:style, ex:reference, ex:note))
-            }
-        `;
-
-        const worksQuery = `
-            PREFIX ex: <http://example.org/bat/>
-            PREFIX schema1: <http://schema.org/>
-            SELECT DISTINCT ?workName ?workType ?role ?workUrl WHERE {
-                BIND(IRI(CONCAT("http://example.org/bat/Author_", "${safeNameForUri}")) AS ?authorUri)
-                { BIND("${safeString}" AS ?creditName) } UNION { ?authorUri ex:alias ?creditName . }
-
-                ?work a ex:StickAnimation ; schema1:name ?workName .
-                OPTIONAL { ?work ex:workType ?workType . }
-                OPTIONAL { ?work schema1:url ?workUrl . }
-                
-                { ?work ex:author ?creditName . BIND("author" AS ?role) }
-                UNION
-                { ?work ex:participant ?creditName . BIND("participant" AS ?role) }
-            }
-        `;
-
-        try {
-            const [resProfile, resWorks] = await Promise.all([
-                fetch(ENDPOINT_URL + "?query=" + encodeURIComponent(profileQuery), { headers: { 'Accept': 'application/json' } }),
-                fetch(ENDPOINT_URL + "?query=" + encodeURIComponent(worksQuery), { headers: { 'Accept': 'application/json' } })
-            ]);
-
-            const jsonProfile = await resProfile.json();
-            const jsonWorks = await resWorks.json();
-
-            const data = { 
-                aliases: [], sites: [], styles: [], refs: [], notes: [], 
-                solo: [], collab_host: [], collab_part: [] 
-            };
-
-            let bestSite = null;
-            jsonProfile.results.bindings.forEach(b => {
-                const prop = b.p.value;
-                let val = b.o.value;
-
-                if (prop.includes("url")) {
-                    if (!bestSite || getUrlPriority(val) > getUrlPriority(bestSite)) {
-                        bestSite = val; 
-                    }
-                } else {
-                    try { val = decodeURIComponent(val).replace(/_/g, ' '); } catch(e) {}
-                    if (prop.includes("alias") && !data.aliases.includes(val)) data.aliases.push(val);
-                    if (prop.includes("style") && !data.styles.includes(val)) data.styles.push(val);
-                    if (prop.includes("reference") && !data.refs.includes(val)) data.refs.push(val);
-                    if (prop.includes("note") && !data.notes.includes(val)) data.notes.push(val);
-                }
-            });
-            if (bestSite) data.sites.push(bestSite);
-
-            const processWorks = (array, b) => {
-                const wName = b.workName.value;
-                const wUrl = b.workUrl ? b.workUrl.value : null;
-                
-                let existing = array.find(w => w.name === wName);
-                if (!existing) {
-                    array.push({ name: wName, url: wUrl });
-                } else {
-                    if (wUrl && getUrlPriority(wUrl) > getUrlPriority(existing.url)) {
-                        existing.url = wUrl; 
-                    }
-                }
-            };
-
-            jsonWorks.results.bindings.forEach(b => {
-                const role = b.role.value;
-                let wType = b.workType ? b.workType.value : "個人作";
-                if (role === "participant" && !b.workType) wType = "合作";
-
-                if (wType === "個人作" && role === "author") processWorks(data.solo, b);
-                if ((wType === "合作" || wType === "企画") && role === "author") processWorks(data.collab_host, b);
-                if (wType === "合作" && role === "participant") processWorks(data.collab_part, b);
-            });
-
-            document.getElementById('detail-name').innerText = authorName;
-            try {
-                const externalUrl = 'https://aiueo9999.pythonanywhere.com/soukan/' + safeNameForUri;
-                document.getElementById('open-soukan-btn').href = externalUrl;
-            } catch(e) {}
-
-            const renderList = (id, array, isLink = false, isBadge = false) => {
-                const el = document.getElementById(id);
-                if (array.length === 0) {
-                    el.innerHTML = '<span class="text-muted">（データなし）</span>';
-                } else if (isBadge) {
-                    el.innerHTML = array.map(item => `<span class="badge-style">${item}</span>`).join(' ');
-                } else if (isLink) {
-                    el.innerHTML = array.map(item => `<a href="${item}" target="_blank" class="tag-link">🔗 ${item}</a>`).join(', ');
-                } else {
-                    el.innerHTML = array.join(', ');
-                }
-            };
-
-            const renderWorksList = (id, array) => {
-                const el = document.getElementById(id);
-                if (array.length === 0) {
-                    el.innerHTML = '<span class="text-muted">（なし）</span>';
-                    return;
-                }
-                el.innerHTML = array.map(w => w.url ? `<a href="${w.url}" target="_blank" class="tag-link">${w.name}</a>` : `<span>${w.name}</span>`).join('<span class="work-separator">, </span>');
-            };
-
-            renderList('detail-aliases', data.aliases);
-            renderList('detail-styles', data.styles, false, true); 
-            renderList('detail-sites', data.sites, true);          
-            renderList('detail-refs', data.refs);
-            
-            document.getElementById('detail-notes').innerText = data.notes.length > 0 ? data.notes[0] : "（データなし）";
-
-            renderWorksList('detail-solo', data.solo);
-            renderWorksList('detail-host', data.collab_host);
-            renderWorksList('detail-part', data.collab_part);
-
-            document.getElementById('detail-loading').style.display = 'none';
-            document.getElementById('detail-content').style.display = 'block';
-
-        } catch (e) {
-            document.getElementById('detail-loading').innerHTML = `<span class="error">データ取得失敗<br>${e.message}</span>`;
-        }
-    }
-
-    function closeModal() {
-        document.getElementById('author-detail-modal').style.display = 'none';
-        document.getElementById('modal-overlay').style.display = 'none';
     }
 </script>
 </body>
